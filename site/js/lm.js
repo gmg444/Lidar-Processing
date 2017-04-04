@@ -14,10 +14,10 @@ $(document).ready(function(){
   // the code to make changes.
   var config = {
     ajaxUrl: "http://localhost:8080/",
-    startingLat: 41.4090,
-    startingLon: -75.6624,
+    startingLat: 42.3251,
+    startingLon: -72.6412,
     startingZoom: 13
-  }
+  };
 
   // Set up starting state - this is a dictionary into which we can put
   // any information that needs to be passed between modules, without creating
@@ -35,7 +35,7 @@ $(document).ready(function(){
 
   var mapCallback = function(state){
    lm.example.update(state);
-  }
+ };
 
   var exampleCallback = function(state){
    lm.map.update(state);
@@ -46,12 +46,12 @@ $(document).ready(function(){
 
   lm.lmap.init(config, state, mapCallback);
   lm.example.init(config, state, exampleCallback);
-  // ******* TODO -initialize other modules similarly. *******
+
+  $("#lm-area-details").css("display", "none");
+  $("#lm-available-layers").css("display", "none");
 });
 
-
-
-$(document).ready(function() {
+/* $(document).ready(function() {
   $("#elev_items").hide();
   $("#forest_items").hide();
   $("a#elev_click").click(function() {
@@ -60,4 +60,4 @@ $(document).ready(function() {
   $("a#forest_click").click(function() {
     $("#forest_items").toggle("fast");
   });
-});
+}); */

@@ -1,11 +1,11 @@
 import cherrypy
 import json
 import batch_process as bp
-import config as conf
+import map_tiles as mt
 import traceback as tb
 
 class Server(object):
-    stub_mode = True
+
     # --------------------------------------------------------------------------------
     # Utility functions for CherryPy endpoints
     # --------------------------------------------------------------------------------
@@ -39,20 +39,16 @@ class Server(object):
     # --------------------------------------------------------------------------------
 
     @cherrypy.expose
-    def start_job(self, town_id):
-        # Example: http://localhost:8080/start_job?town_id=11850
+    def start_job(self, description, poly_wkt):
+        # Example: http://localhost:8080/start_job?town_id=&tile_ids=15,16
         # Assigns a batch id, starts it off, and returns the job id to the client.
         result = self.get_response_wrapper()
         try:
-            if Server.stub_mode:
-                result["data"]["job_id"] = 100
-                result["data"]["num_tiles"] = 32
-            else:
-                job_id = bp.get_new_job_id(town_id)
-                tile_list = bp.get_tile_list(town_id)
-                bp.start_job(job_id, town_id, tile_list)
-                result["data"]["job_id"] = job_id
-                result["data"]["num_tiles"] = len(tile_list)
+            job_id = bp.get_new_job_id()
+            tile_list = bp.get_tile_list(poly_wkt)
+            bp.start_job(job_id, tile_list, description, poly_wkt)
+            result["data"]["job_id"] = job_id
+            result["data"]["num_tiles"] = len(tile_list)
         except Exception as e:
             result["status"] = 500
             result["message"] = "{0} {1}".format(e, tb.format_exc())
@@ -64,16 +60,10 @@ class Server(object):
         # Example: http://localhost:8080/job_status?job_id=42
         result = self.get_response_wrapper()
         try:
-            if Server.stub_mode:
-                result["data"]["description"] = "Downloading files"
-                result["data"]["stage"] = "1 of 5"
-                result["data"]["percent_done"] = 10
-            else:
-                stage = bp.job_status(job_id)
-                # TODO - convert from stage number to text
-                result["data"]["description"] = "Downloading files"
-                result["data"]["stage"] = "{0} of 5".format(stage)
-                result["data"]["percent_done"] = stage * 20
+            job_status, tile_status, percent_done = bp.job_status(int(job_id))
+            result["data"]["description"] = job_status
+            result["data"]["tile_status"] = tile_status
+            result["data"]["percent_done"] = percent_done
         except Exception as e:
             result["status"] = 500
             result["message"] = "{0} {1}".format(e, tb.format_exc())
@@ -85,11 +75,8 @@ class Server(object):
         # Example: http://localhost:8080/cancel_job?job_id=45
         result = self.get_response_wrapper()
         try:
-            if Server.stub_mode:
-                result["data"]["description"] = "Job cancelled"
-            else:
-                bp.cancel_job(job_id)
-                result["data"]["description"] = "Job cancelled"
+            bp.cancel_job(job_id)
+            result["data"]["description"] = "Job cancelled"
         except Exception as e:
             result["status"] = 500
             result["message"] = "{0} {1}".format(e, tb.format_exc())
@@ -101,22 +88,8 @@ class Server(object):
         # Example: http://localhost:8080/completed_jobs
         result = self.get_response_wrapper()
         try:
-            if Server.stub_mode:
-                result["data"] = [
-                    {
-                        "name": "Northampton, MA",
-                        "town_id": 11850,
-                        "job_id": 45
-                    },
-                    {
-                        "name": "Scranton, PA",
-                        "town_id": 28369,
-                        "job_id": 46
-                    },
-                ]
-            else:
-                # TODO: update with db query of jobs and towns tables
-                pass
+            job_list = bp.get_job_list()
+            result["data"] = job_list
         except Exception as e:
             result["status"] = 500
             result["message"] = "{0} {1}".format(e, tb.format_exc())
@@ -128,32 +101,33 @@ class Server(object):
         # Example: http://localhost:8080/layers_in_job?job_id=45
         result = self.get_response_wrapper()
         try:
-            if Server.stub_mode:
-                result["data"] = [
-                    {
-                        "name": "Digital Surface Model",
-                        "url": "/45_dsm"
-                    },
-                    {
-                        "name": "Digital Elevation Model",
-                        "url": "/45_dem"
-                    },
-                    {
-                        "name": "Height Model",
-                        "url": "/45_ndsm"
-                    },
-                    {
-                        "name": "Solar Radiation",
-                        "url": "/45_sol"
-                    },
-                    {
-                        "name": "Tree Cover",
-                        "url": "/45_tree"
-                    },
-                ]
-            else:
-                # TODO: update with db query of jobs and map_layers tables
-                pass
+            result["data"] = [
+                {
+                    "type": "dsm",
+                    "map_url": "tiles/80/dsm",
+                    "data_url": "tiles/80/dsm_mosaic.tif"
+                },
+                {
+                    "type": "dem",
+                    "map_url": "tiles/80/dem",
+                    "data_url": "tiles/80/dem_mosaic.tif"
+                },
+                {
+                    "type": "height",
+                    "map_url": "tiles/80/height",
+                    "data_url": "tiles/80/height_mosaic.tif"
+                },
+                {
+                    "type": "insolation",
+                    "map_url": "tiles/80/insolation",
+                    "data_url": "tiles/80/insolation_mosaic.tif"
+                },
+                {
+                    "type": "tree",
+                    "map_url": "tiles/80/tree",
+                    "data_url": "tiles/80/tree_mosaic.tif"
+                },
+            ]
         except Exception as e:
             result["status"] = 500
             result["message"] = "{0} {1}".format(e, tb.format_exc())
@@ -170,7 +144,7 @@ class Server(object):
         try:
             result = self.get_response_wrapper()
             result["data"]['coords'] = [lat, lon]
-            vals = bp.fetch_tile_list(lat, lon)
+            vals = mt.fetch_tile_list(lat, lon)
             result["data"]['# of tiles'] = len(vals)
             return self.encode_results(result)
 
@@ -179,6 +153,29 @@ class Server(object):
             result["message"] = "{0} {1}".format(e, tb.format_exc())
 
         return self.encode_results(result)
+
+    @cherrypy.expose
+    def polygon_data(self, coords):
+        try:
+            result = self.get_response_wrapper()
+            polyData = mt.get_polygon_data(coords)
+            result["data"] = polyData
+        except Exception as e:
+            result["status"] = 500
+            result["message"] = "{0} {1}".format(e, tb.format_exc())
+        return self.encode_results(result)
+
+    @cherrypy.expose
+    def town_data(self, lat, lon):
+        try:
+            result = self.get_response_wrapper()
+            townData = mt.get_town_data(lat, lon)
+            result["data"] = townData
+        except Exception as e:
+            result["status"] = 500
+            result["message"] = "{0} {1}".format(e, tb.format_exc())
+        return self.encode_results(result)
+
 
     @cherrypy.expose
     def example(self, lat, lon):

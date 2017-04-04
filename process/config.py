@@ -1,4 +1,4 @@
-work_path = "C:/Projects/lidar-data/pipeline/"  # C:/Projects/lidar-data/georgetown_de/"
+work_path = "d:/lidar-maps-data/"  # C:/Projects/lidar-data/georgetown_de/"
 output_bucket = "lidar-maps-output"
 las_tools_dir = "C:/LAStools/LAStools/bin/"
 saga_cmd_dir = "C:/saga/"
@@ -11,3 +11,5 @@ db = {
     "user": "postgres",
     "password": "quagga"
 }
+is_amherst = False
+num_threads = 4

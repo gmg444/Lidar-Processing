@@ -2,14 +2,14 @@
 # Code to use laspy to load data into pandas and numpy arrays, to get grid values
 # more efficiently, without any point-by-point iteration.
 # ##############################################################################
-
 import numpy as np
-import math
 import laspy as ls
 import pandas as pd
+import math
 import subprocess as sb
+import scipy.ndimage as ndi
 import config as conf
-import os
+import utils as steps
 
 """"
 Be sure laspy folder is in the current directory
@@ -25,39 +25,8 @@ In pycharm, selecct the py27 virtual environment as the project interpreter
 When running from the command-line, type activate ph27 before running
 """
 
-def write_bin_file(file_name, arr, bit_depth, x_min, y_min, no_data_value):
-    # bit depths:
-    # 0 = unsigned byte
-    # 2 = unsigned 2-byte word
-    # 3 = signed integer
-    # 6 = 32-bit float
-
-    # Save numpy file as raw binary with the relevant bit depth.
-    dt = np.float32
-    if bit_depth == 3:
-        dt = np.int32
-    # Next line saves raw binary 32-bit float
-    arr.astype(np.float32).tofile(file_name)
-
-    # Numpy will add .npy by defult - remove to get the base file name, and let saga import the data
-    output_file = file_name.replace(".npy", "")
-    cmd = "saga_cmd io_grid 4 -GRID={0} -FILE_DATA={1} -NX={2} -NY={3} -DXY=1.000000 -XMIN={4} -YMIN={5} -UNIT= " \
-          "-ZFACTOR=1.000000 -NODATA={6} -DATA_OFFSET=0 -LINE_OFFSET=0 -LINE_ENDSET=0 -DATA_TYPE={7} " \
-          "-BYTEORDER_BIG=0 -TOPDOWN=0"
-    cmd = cmd.format(output_file, file_name, arr.shape[1], arr.shape[0], x_min,
-                     y_min, no_data_value, bit_depth)
-    sb.call(cmd, shell=False)
-
-    # Delete files to save space.
-    try:
-        os.remove(file_name)
-    except Exception as e:
-        print ("Could not delete LAS file.", e)
-    return output_file + ".sdat"
-
 def generate_grids(input_file):
     no_data_value = -1
-    output_files = {}
 
     # Read in las file with laspy
     f = ls.file.File(input_file, mode="rw")
@@ -65,8 +34,12 @@ def generate_grids(input_file):
     Y = (f.Y * f.header.scale[1]) + f.header.offset[1]
 
     # Projection from https://gist.github.com/springmeyer/871897, vectorized with numpy
-    x = (X * 20037508.34 / 180.0)
-    y = (np.log(np.tan((90.0 + Y) * math.pi / 360.0)) / (math.pi / 180.0) * 20037508.34 / 180.0)
+    if conf.is_amherst:
+        x = X/3.28084
+        y = Y/3.28084
+    else:
+        x = (X * 20037508.34 / 180.0)
+        y = (np.log(np.tan((90.0 + Y) * math.pi / 360.0)) / (math.pi / 180.0) * 20037508.34 / 180.0)
     z = (f.Z * f.header.scale[2])
 
     # Create int array for indexing grid x, y
@@ -100,20 +73,18 @@ def generate_grids(input_file):
     # Output max z
     arr[:, :] = no_data_value
     arr[existing_y, existing_x] = max_z.z.values
-    new_file = write_bin_file(input_file.replace(".las", "_max_z.npy"), arr, 6,  x.min(), y.min(), no_data_value)
-    output_files["max_z"] = new_file
+    new_file = steps.write_tiff_file(input_file.replace(".las", "_dsm.tif"), arr, x.min(), y.min(), no_data_value)
 
     # Output min z
     arr[:, :] = no_data_value
     arr[existing_y, existing_x] = min_z.z.values
-    new_file = write_bin_file(input_file.replace(".las", "_min_z.npy"), arr, 6,  x.min(), y.min(), no_data_value)
-    output_files["min_z"] = new_file
+    min_z_arr = arr + 0
 
     # Output range z
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = range_z.z.values
-    new_file = write_bin_file(input_file.replace(".las", "_range_z.npy"), arr, 6,  x.min(), y.min(), no_data_value)
-    output_files["range_z"] = new_file
+    new_file = steps.write_tiff_file(input_file.replace(".las", "_height.tif"), arr, x.min(), y.min(), no_data_value)
+    range_z_arr = arr + 0
 
     # Clean up - seems to help reduce memory usage a bit
     max_z = None
@@ -129,12 +100,41 @@ def generate_grids(input_file):
     # Output classification
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = max_c.z.values
-    new_file = write_bin_file(input_file.replace(".las", "_class.npy"), arr, 6,  x.min(), y.min(), no_data_value)
-    output_files["max_c"] = new_file
+    new_file = steps.write_tiff_file(input_file.replace(".las", "_class.tif"), arr, x.min(), y.min(), no_data_value)
+    class_arr = arr + 0
+
+    ground_cells = ((class_arr == 2) * (range_z_arr == 0)).astype(np.int32)
+    ground_arr = min_z_arr * ground_cells
+    ground_arr[ground_arr <= 0] = -1
+    new_file = steps.write_tiff_file(input_file.replace(".las", "_dem_temp.tif"), ground_arr, x.min(), y.min(), no_data_value)
+    output_file = new_file.replace("_dem_temp.tif", "_dem.tif")
+    # -a argument required, with 0,0,0 - see http://gis.stackexchange.com/questions/143818/osgeo4w-and-gdal-gdal2tiles-py-error
+    cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_fillnodata.py" -md 100 -b 1 -of GTiff {0} {1}'.format(new_file, output_file)
+    sb.call(cmd, shell=False)
+
+    buildings_cells = (class_arr == 1).astype(np.int32)
+    struct = ndi.generate_binary_structure(2, 1)
+    # Expand out buildings cells to catch buildings edges
+    # buildings_cells = ndi.binary_dilation(buildings_cells, structure=struct, iterations=2)
+    ground_cells[buildings_cells==1] = 1
+    # Expand ground cells to catch power lines
+    ground_cells = ndi.binary_dilation(ground_cells, iterations=2)
+    tree_cells = np.logical_not (ground_cells)
+    tree_cells[range_z_arr < 5] = False
+    tree_cells[range_z_arr > 50] = False
+    # Expand back out tree
+    tree_cells = ndi.binary_dilation(tree_cells, structure=struct, iterations=2)
+    tree_arr = 1.0 * tree_cells
+    new_file = steps.write_tiff_file(input_file.replace(".las", "_trees.tif"), tree_arr, x.min(), y.min(), no_data_value)
 
     # Clean up
     max_c = None
     df = None
+    class_arr = None
+    range_z_arr = None
+    min_z_arr = None
+    ground_mask = None
+    grond_arr = None
 
     # Intensity
     df = pd.DataFrame(xyi)
@@ -144,13 +144,10 @@ def generate_grids(input_file):
     # Output intensity
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = mean_i.z.values
-    new_file = write_bin_file(input_file.replace(".las", "_intensity.npy"), arr, 6,  x.min(), y.min(), no_data_value)
-    output_files["mean_i"] = new_file
+    new_file = steps.write_tiff_file(input_file.replace(".las", "_intensity.tif"), arr, x.min(), y.min(), no_data_value)
 
     # Clean up
     max_i = None
-
-    return output_files
 
 # For debugging - you can display gridded numpy arrays in matplotlib:
 # pip install matplotlib
