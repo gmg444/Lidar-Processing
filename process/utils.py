@@ -3,6 +3,11 @@ import subprocess as sb
 import config as conf
 import gdal, osr
 import glob as gl
+import ogr
+import gdal
+import pandas as pd
+import geopandas as gpd
+from shapely.wkt import loads
 
 def exec_command_line(cmd):
     print (cmd)
@@ -100,3 +105,77 @@ def fill_gaps(input_file):
 def hilshade(input_file, output_file):
     cmd = conf.gdal_dir + "gdaldem hillshade -az 315 -z 1 {0} {1}".format(input_file, output_file)
     exec_command_line(cmd)
+
+def make_polygon(infile, outfile, name):
+    #input tif file
+    ds = gdal.Open(infile)
+    tree_band = ds.GetRasterBand(1)
+    polylayer = name
+    drv = ogr.GetDriverByName("ESRI Shapefile")
+    dst_ds = drv.CreateDataSource(outfile)
+    dst_layer = dst_ds.CreateLayer(polylayer, srs=None)
+    #Create New Field in output shapefile to assign value to
+    newField = ogr.FieldDefn('Value', ogr.OFTInteger)
+    dst_layer.CreateField(newField)
+    gdal.Polygonize(tree_band, None, dst_layer, 0, [], callback=None)
+    return outfile
+
+def dissolve_polygon(infile, outfile):
+    tree_layer = gpd.read_file(infile)
+    tree_layer = tree_layer[tree_layer.Value == 1]
+    tree_subset = tree_layer[['geometry', 'Value']]
+    # dissolve polygons by Value
+    dissolved_tree_subset = tree_subset.dissolve(by='Value')
+    # dissolved_tree_subset.plot()
+    # head = dissolved_tree_subset.head()
+    dissolved_tree_subset.to_file(outfile)
+    return outfile
+
+def merge_tiles(wildcard_path, output_file, clip_poly):
+    files = gl.glob(wildcard_path)
+    layers = []
+    for f in files:
+        layers.append(gpd.read_file(f))
+    poly = gpd.GeoDataFrame(pd.concat(layers, ignore_index=True))
+    poly.crs = {'init': 'epsg:3857'}
+    poly = poly.to_crs({'init' :'epsg:4326'})
+    poly.to_file(output_file)
+
+    # This is way too slow and unworkable - redo in raster
+    # try:
+    #     poly = poly.dissolve(by='FID')
+    # except Exception as e:
+    #     print ("Exception processing tile {0}: {1}".formatoutput_file, str(e))
+    # poly.crs = {'init': 'epsg:3857'}
+    # poly = poly.to_crs({'init' :'epsg:4326'})
+    # merged_shp = gpd.overlay(poly, clip_poly, how='intersection')
+    # merged_shp.to_file(output_file)
+
+def dissolve_polygon(infile, outfile):
+    layer = gpd.read_file(infile )
+    layer = layer[layer.Value == 1]
+    layer = layer[['geometry','Value']]
+    #dissolve polygons by Value
+    dissolved = layer.dissolve(by='Value')
+    # dissolved_tree_subset.plot()
+    # head = dissolved_tree_subset.head()
+    dissolved.to_file(outfile)
+    return outfile
+
+def get_clip_poly(wkt):
+    pgon = loads(wkt)
+    df = gpd.GeoDataFrame([{"Value": 1, "geometry": pgon}], index=[1])
+    df.crs = {'init' :'epsg:4326'}
+    return df
+
+def contours(input_file, output_file, clip_poly):
+    cmd = conf.gdal_dir + 'gdal_contour -a "elevation" -i 5.0 {0} {1}'.format(input_file, output_file)
+    exec_command_line(cmd)
+    poly = gpd.GeoDataFrame.from_file(output_file)
+    poly.crs = {'init': 'epsg:3857'}
+    poly = poly.to_crs({'init' :'epsg:4326'})
+    poly.to_file(output_file)
+
+def save_to_shp(poly, out_file):
+    poly = poly.to_crs({'init': 'epsg:3857'})
+    poly.to_file(out_file)

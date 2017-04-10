@@ -33,19 +33,10 @@ $(document).ready(function(){
   // instead of spreading around module references, which gets complicated fase
   // ******* TODO -add callbacks for modules that need to share data *******
 
-  var mapCallback = function(state){
-   lm.example.update(state);
- };
-
-  var exampleCallback = function(state){
-   lm.map.update(state);
-  }
-
   // Each module loaded after this one should have put their objects into the lm
   // global variable, and can be initialized here.
 
-  lm.lmap.init(config, state, mapCallback);
-  lm.example.init(config, state, exampleCallback);
+  lm.lmap.init(config, state);
 
   $("#lm-area-details").css("display", "none");
   $("#lm-available-layers").css("display", "none");

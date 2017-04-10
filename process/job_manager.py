@@ -6,6 +6,8 @@ import las2grid as lg
 import glob as gl
 import database as db
 from multiprocessing import Pool
+import tif2tree as tft
+import tif2terrain as tfterr
 
 def process_tiles(tiles):
     # Downloads and grids tiles
@@ -22,21 +24,11 @@ def process_tiles(tiles):
                 cur_file = utils.convert_to_las(cur_file, work_path)
             #jm.update_tile_status(id, "generating grids")
             lg.generate_grids(cur_file)
-            #jm.update_tile_status(id, "cleaning up")
-            for f_name in gl.glob(work_path + file_name.replace(".laz", "*.*")):
-                if not f_name.endswith(".tif"):
-                    try:
-                        print("Deleting " + f_name)
-                        os.remove(f_name)
-                    except Exception as ex:
-                        print ex  # Try to delete, but continue if file is locked by another thread
-            #jm.update_tile_status(id, "complete")
         except Exception as e:
             print ("Exception processing tile {0}: {1}".format(str(t['id']), str(e)))
             # log_message("Exception processing tile {0}: {1}".format(str(t['id']), str(e)))
 
 class JobManager():
-
     def __init__(self):
         self.job_id = None
         self.tile_list = None
@@ -82,22 +74,35 @@ class JobManager():
             # for t in self.thread_list:
             #     t.join()
             self.update_status("processing tiles")
-            pool = Pool(self.num_threads)
-            pool.map(process_tiles, args)
-            pool.close()
-            pool.join()
+            process_tiles(tile_list)
+            # pool = Pool(self.num_threads)
+            # pool.map(process_tiles, args)
+            # pool.close()
+            # pool.join()
             self.update_status("mosaicking tiles")
             utils.mosaic_tiles(self.work_path + "*_dsm.tif", self.work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy)
             utils.mosaic_tiles(self.work_path + "*_height.tif", self.work_path + "mosaic_height.tif", minx, miny, maxx, maxy)
-            utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy)
+            # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy)
             utils.mosaic_tiles(self.work_path + "*_dem.tif", self.work_path + "mosaic_dem.tif", minx, miny, maxx, maxy)
-            utils.mosaic_tiles(self.work_path + "*_trees.tif", self.work_path + "mosaic_trees.tif", minx, miny, maxx, maxy)
-            self.update_status("generating map tiles")
-            utils.create_output_tiles(self.work_path + "mosaic_dsm.tif", self.work_path + "dsm/")
-            utils.create_output_tiles(self.work_path + "mosaic_height.tif", self.work_path + "height/")
-            utils.create_output_tiles(self.work_path + "mosaic_intensity.tif", self.work_path + "intensity/")
-            utils.create_output_tiles(self.work_path + "mosaic_dem.tif", self.work_path + "dem/")
-            utils.create_output_tiles(self.work_path + "mosaic_trees.tif", self.work_path + "trees/")
+
+            sql = "select geom_txt from job where gid = {0}".format(self.job_id)
+            wkt = db.exec_sql(sql, [], True)[0]
+            clip_poly = utils.get_clip_poly(wkt)
+            # utils.save_to_shp(clip_poly, self.work_path + "clip.shp")
+            # utils.set_no_data( self.work_path + "clip.shp")
+
+            utils.merge_tiles(self.work_path + "*_trees.shp", self.work_path + "mosaic_trees.shp", clip_poly)
+            utils.merge_tiles(self.work_path + "*_bldgs.shp", self.work_path + "mosaic_bldgs.shp", clip_poly)
+            utils.merge_tiles(self.work_path + "*_impervious.shp", self.work_path + "mosaic_impervious.shp", clip_poly)
+            utils.contours(self.work_path + "mosaic_dem.tif", self.work_path + "mosaic_contours.shp", clip_poly)
+
+            # utils.mosaic_tiles(self.work_path + "*_trees.tif", self.work_path + "mosaic_trees.tif", minx, miny, maxx, maxy)
+            # self.update_status("generating map tiles")
+            # utils.create_output_tiles(self.work_path + "mosaic_dsm.tif", self.work_path + "dsm/")
+            # utils.create_output_tiles(self.work_path + "mosaic_height.tif", self.work_path + "height/")
+            # # utils.create_output_tiles(self.work_path + "mosaic_intensity.tif", self.work_path + "intensity/")
+            # utils.create_output_tiles(self.work_path + "mosaic_dem.tif", self.work_path + "dem/")
+            # # utils.create_output_tiles(self.work_path + "mosaic_trees.tif", self.work_path + "trees/")
             self.update_status("job complete!")
         else:
             self.job_id = None

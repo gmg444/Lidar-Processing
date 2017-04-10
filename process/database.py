@@ -39,5 +39,3 @@ def get_one_row(sql, params):
     cnxn.close()
     return result
 
-
-

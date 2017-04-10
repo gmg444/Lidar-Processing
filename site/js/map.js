@@ -19,10 +19,7 @@ lm.lmap =  new function () {
   // We keep these variables private inside this curent "closure" scope.
   // using "this.ini" let's us access init() from outside this module, as
   // long as we have a reference to "this".
-  this.init = function(cfg, state, callback){
-     // The initial setup needs to save these paramters for future use,
-     // in the pointer to the containing object/function, "that":
-     that.notify = callback;
+  this.init = function(cfg, state){
      that.state = state;
      that.ajaxUrl = cfg.ajaxUrl;
      // L is a global used by leaflet.  We can create the new leaflet map
@@ -168,7 +165,9 @@ lm.lmap =  new function () {
 
     map.on('draw:drawstart', function () {
         drawingNow = true;
-        map.removeLayer(geoJsonLayer);
+        if (geoJsonLayer){
+          map.removeLayer(geoJsonLayer);
+        }
         $(".leaflet-clickable").attr("fill", "#000000");
         $(".leaflet-draw-actions a").css("color", "rgb(255,255,255)");
         $(".leaflet-draw-draw-polygon").prop("title", "Draw your solar installation");
@@ -212,11 +211,11 @@ lm.lmap =  new function () {
     if (response.data.numTiles == 0){
       status = "Not available";
     }
-    geoJsonLayer = L.geoJson($.parseJSON(response.data.townGeoJson)).addTo(map);
+    geoJsonLayer = L.geoJson($.parseJSON(response.data.polyGeoJson)).addTo(map);
     map.fitBounds(geoJsonLayer.getBounds());
     displayAreaDetails(response.data.townName + ", " + response.data.stateName,
       status, response.data.numTiles, response.data.townArea,
-      true, response.data.townWkt);
+      true, response.data.polyWkt);
   };
 
  var displayJobStarted = function(){

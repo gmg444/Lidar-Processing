@@ -40,7 +40,7 @@ def get_town_data(lat, lon):
     cursor = cnxn.cursor()
     cursor.execute(sql)
     row = cursor.fetchone()
-    result["townGeoJson"] = str(row[0])
+    result["polyGeoJson"] = str(row[0])
     result["numTiles"] = int(row[1])
     result["processArea"] = float(row[2])
     result["townName"] = str(row[3])

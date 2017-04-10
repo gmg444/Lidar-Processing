@@ -10,6 +10,9 @@ import subprocess as sb
 import scipy.ndimage as ndi
 import config as conf
 import utils as steps
+import tif2tree as tft
+import tif2terrain as tfterr
+import scipy.ndimage as ndi
 
 """"
 Be sure laspy folder is in the current directory
@@ -24,7 +27,7 @@ pip install pandas
 In pycharm, selecct the py27 virtual environment as the project interpreter
 When running from the command-line, type activate ph27 before running
 """
-
+# saga_cmd ta_lighting 2 -GRD_DEM=./20150514_QL1_18TXM691687_NW_dsm.tif -GRD_DIRECT=out_direct.tif -GRD_DIFFUS=out_diffus.tif -GRD_TOTAL=out_total.tif -HOUR_RANGE_MIN=5.000000 -HOUR_RANGE_MAX=20.000000 -METHOD=2
 def generate_grids(input_file):
     no_data_value = -1
 
@@ -64,7 +67,7 @@ def generate_grids(input_file):
     min_z = df.groupby(['x', 'y'], sort=False).min()
     range_z = max_z - min_z
 
-    # Create numpy array for gridded ouitput, and set it to no_data_value. Existing are x/y combinations
+    # Create numpy array for gridded output, and set it to no_data_value. Existing are x/y combinations
     # where points exists.
     arr = np.zeros((y_int.max()+1, x_int.max()+1))
     existing_x = [rt[0] for rt in max_z.index]
@@ -73,7 +76,10 @@ def generate_grids(input_file):
     # Output max z
     arr[:, :] = no_data_value
     arr[existing_y, existing_x] = max_z.z.values
-    new_file = steps.write_tiff_file(input_file.replace(".las", "_dsm.tif"), arr, x.min(), y.min(), no_data_value)
+    dsm_file = input_file.replace(".las", "_dsm.tif")
+    new_file = steps.write_tiff_file(dsm_file, arr, x.min(), y.min(), no_data_value)
+    # tfs.tif_to_solar(dsm_file, dsm_file.replace(".tif", "_solar.tif"))
+    dsm_arr = arr + 0
 
     # Output min z
     arr[:, :] = no_data_value
@@ -83,8 +89,11 @@ def generate_grids(input_file):
     # Output range z
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = range_z.z.values
-    new_file = steps.write_tiff_file(input_file.replace(".las", "_height.tif"), arr, x.min(), y.min(), no_data_value)
+    height_tif = input_file.replace(".las", "_height.tif")
+    new_file = steps.write_tiff_file(height_tif, arr, x.min(), y.min(), no_data_value)
     range_z_arr = arr + 0
+
+    trees_arr = tft.make_tree_shp(height_tif, height_tif.replace("_height.tif", "_trees.shp"))
 
     # Clean up - seems to help reduce memory usage a bit
     max_z = None
@@ -100,38 +109,39 @@ def generate_grids(input_file):
     # Output classification
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = max_c.z.values
-    new_file = steps.write_tiff_file(input_file.replace(".las", "_class.tif"), arr, x.min(), y.min(), no_data_value)
+    # new_file = steps.write_tiff_file(input_file.replace(".las", "_class.tif"), arr, x.min(), y.min(), no_data_value)
     class_arr = arr + 0
 
     ground_cells = ((class_arr == 2) * (range_z_arr == 0)).astype(np.int32)
     ground_arr = min_z_arr * ground_cells
     ground_arr[ground_arr <= 0] = -1
+
     new_file = steps.write_tiff_file(input_file.replace(".las", "_dem_temp.tif"), ground_arr, x.min(), y.min(), no_data_value)
-    output_file = new_file.replace("_dem_temp.tif", "_dem.tif")
+    dem_file = new_file.replace("_dem_temp.tif", "_dem.tif")
     # -a argument required, with 0,0,0 - see http://gis.stackexchange.com/questions/143818/osgeo4w-and-gdal-gdal2tiles-py-error
-    cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_fillnodata.py" -md 100 -b 1 -of GTiff {0} {1}'.format(new_file, output_file)
+    cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_fillnodata.py" -md 100 -b 1 -of GTiff {0} {1}'.format(new_file, dem_file)
     sb.call(cmd, shell=False)
 
-    buildings_cells = (class_arr == 1).astype(np.int32)
-    struct = ndi.generate_binary_structure(2, 1)
-    # Expand out buildings cells to catch buildings edges
-    # buildings_cells = ndi.binary_dilation(buildings_cells, structure=struct, iterations=2)
-    ground_cells[buildings_cells==1] = 1
-    # Expand ground cells to catch power lines
-    ground_cells = ndi.binary_dilation(ground_cells, iterations=2)
-    tree_cells = np.logical_not (ground_cells)
-    tree_cells[range_z_arr < 5] = False
-    tree_cells[range_z_arr > 50] = False
-    # Expand back out tree
-    tree_cells = ndi.binary_dilation(tree_cells, structure=struct, iterations=2)
-    tree_arr = 1.0 * tree_cells
-    new_file = steps.write_tiff_file(input_file.replace(".las", "_trees.tif"), tree_arr, x.min(), y.min(), no_data_value)
+    # buildings_cells = (class_arr == 1).astype(np.int32)
+    # struct = ndi.generate_binary_structure(2, 1)
+    # # Expand out buildings cells to catch buildings edges
+    # # buildings_cells = ndi.binary_dilation(buildings_cells, structure=struct, iterations=2)
+    # ground_cells[buildings_cells==1] = 1
+    # # Expand ground cells to catch power lines
+    # ground_cells = ndi.binary_dilation(ground_cells, iterations=2)
+    # tree_cells = np.logical_not (ground_cells)
+    # tree_cells[range_z_arr < 5] = False
+    # tree_cells[range_z_arr > 50] = False
+    # # Expand back out tree
+    # tree_cells = ndi.binary_dilation(tree_cells, structure=struct, iterations=2)
+    # tree_arr = 1.0 * tree_cells
+    # new_file = steps.write_tiff_file(input_file.replace(".las", "_trees.tif"), tree_arr, x.min(), y.min(), no_data_value)
 
     # Clean up
     max_c = None
     df = None
     class_arr = None
-    range_z_arr = None
+    # range_z_arr = None
     min_z_arr = None
     ground_mask = None
     grond_arr = None
@@ -144,7 +154,9 @@ def generate_grids(input_file):
     # Output intensity
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = mean_i.z.values
-    new_file = steps.write_tiff_file(input_file.replace(".las", "_intensity.tif"), arr, x.min(), y.min(), no_data_value)
+    # new_file = steps.write_tiff_file(input_file.replace(".las", "_intensity.tif"), arr, x.min(), y.min(), no_data_value)
+
+    tfterr.make(dem_file, trees_arr, arr, dsm_arr, range_z_arr)
 
     # Clean up
     max_i = None

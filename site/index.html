@@ -1,88 +1,92 @@
 <html>
-	<head>
+<head>
 		<link rel="icon" href="img/favicon.ico" type="image/png" />
 		<link rel="shortcut icon" href="/favicon.ico" />
 		<link rel="stylesheet" href="lib/leaflet/leaflet.css" />
+		<link rel="stylesheet" href="lib/leaflet-draw/leaflet.draw.css" />
 		<link rel="stylesheet" href="css/lm.css" />
-		<link rel="stylesheet" href="lib/bootstrap/css/bootstrap.css">
+		<link rel="stylesheet" href="lib/bootstrap/css/bootstrap.min.css">
+		<link rel="stylesheet" href="lib/bootstrap/css/bootstrap-theme.min.css">
 		<link rel="stylesheet" href="lib/font-awesome-4.7.0/css/font-awesome.min.css">
+		<script src="lib/jquery-3.1.1.min.js"></script>
+		<script src="lib/bootstrap/js/bootstrap.min.js"></script>
 		<script src="lib/leaflet/leaflet.js"></script>
-		<script src="lib/locationfilter/locationfilter.js"></script>
-	  	<script src="lib/jquery-3.1.1.min.js"></script>
-	  	<script src="lib/bootstrap/js/bootstrap.min.js"></script>
+	  <script src="lib/leaflet-draw/leaflet.draw.js"></script>
 		<script src="js/lm.js"></script>
 		<script src="js/map.js"></script>
-	</head>
+</head>
 
-	<body>
+<body>
+  <div style="height: 100%; position: fixed; top: 0; width: 100%">
 		<div class="container-fluid">
-	   		<div class="row" id="banner">
-		   		<div id="semi_circle">
-		    		<div id="circle_text">
-		    			GTECH 73400<br />presents..<br />LIDAR MAPS
-		    		</div>
-		    	</div>
-	    	</div>
-	    </div>
-	    <div class="container-fluid">
-	    	<div class="row" id="intro_area">
-	    		<div id="intro">
-	    			<p>LIDAR DATA IS BEING GATHERED AT A RAPID PACE ACROSS THE COUNTRY, BUT DATA PRODUCTS THAT TAKE ADVANTAGE OF THIS DATA ARE LAGGING...</p>
+   		<div class="row" id="banner">
+	   		<div id="semi_circle">
+	    		<div id="circle_text">LIDAR MAPS
 	    		</div>
 	    	</div>
-	    	<div class="row" id="goal_area">
-	    		<div id="goal_header">
-	    			<h3>OUR GOAL</h3>
-	    		</div>
-	    		<div id="goal_body">
-	    			<p>THE GOAL OF THIS PROJECT IS TO BUILD AN OPEN-SOURCE LIDAR PROCESSING TOOL THAT HELPS LOCAL GIS MANAGERS AND MAP USERS GET USEFUL INFO FROM EXISTING LIDAR DATASETS MORE EASILY. EXPLORE THE MAP BELOW OR SCROLL DOWN TO READ MORE ABOUT THE PROCESSES WE RUN.</p>
-	    		</div>
-	    	</div>
-	    </div>
-	    <div class="container-fluid">
-		    <div class="row" id="map_area">
-				<div id="map_panel">
-					<div id="panel_title">
-						Process Legend
+    	</div>
+    </div>
+    <div class="container-fluid">
+    	<div class="row" id="intro_area" >
+				<span class="header-description">Select an available map or a new area to process</span>
+				<select class="form-control" id="lm-select-area" style="float: right; margin: 10px; width: 200px">
+				  <option selected value="0">Available maps</option>
+				</select>
+    	</div>
+    </div>
+    <div class="container-fluid">
+				<div class="map_panel" id="lm-available-layers">
+					<div class="panel_title">
+						Available Layers
 					</div>
-					<div id="panel_content">
-						<div id="elev_link">
-							<a id="elev_click" href="#"><i class="fa fa-angle-right" id="elev"></i> Elevation</a>
-								<div id="elev_items">
-									<ul id="elev_items">
-										<li><a href="#">DEM</a></li>
-										<li><a href="#">DSM</a></li>
-										<li><a href="#">nDSM</a></li>
-									</ul>
-								</div>
-						</div>
-						<div id="forest_link">
-							<a id="forest_click" href="#"><i class="fa fa-angle-right" id="forest"></i> Forestry</a>
-								<div id="forest_items">
-									<ul id="forest_items">
-										<li><a href="#">Slope & Aspect</a></li>
-										<li><a href="#">Solar Radiation</a></li>
-										<li><a href="#">Tree Classification</a></li>
-									</ul>
-								</div>
-						</div>
+					<div class="panel_content">
+				    <div id="dem"><input type="radio" name="optionsRadios" value="dem" checked /> DEM <a href-="#" style="float: right">v</a></div>
+				    <div id="dsm"><input type="radio" name="optionsRadios" id="dsm" value="dsm" /> DSM <a href-="#" style="float-right">v</a></div>
+					  <div id="height"><input type="radio" name="optionsRadios" id="height" value="height" /> Height <a href-="#">v</a></div>
+						<div id="trees"><input type="radio" name="optionsRadios" id="trees" value="trees" /> Trees <a href-="#">v</a></div>
+						<div id="slope"><input type="radio" name="optionsRadios" id="slope" value="slope" /> Slope <a href-="#">v</a></div>
+						<div id="aspect"><input type="radio" name="optionsRadios" id="aspect" value="aspect" /> Aspect <a href-="#">v</a></div>
+						<div id="insolation"><input type="radio" name="optionsRadios" id="insolation" value="insolation" /> Insolation <a href-="#">v</a></div>
 					</div>
 				</div>
-				<div id="map">
+			<div id="map"></div>
+		</div>
+		<div class="footer container-fluid">
+			<div class="row" >
+				<span id="lm-mouse_status" style="float: left; color: white"></span>
+				<div style="text-align: center; color: white; margin-top: 10px" id="lm-area-details">
+					Area: <span id="lm-area-name" style="font-weight: bold"></span>&nbsp;&nbsp;&nbsp;
+						Status: <span id="lm-area-status" style="font-weight: bold"></span>&nbsp;&nbsp;&nbsp;
+						Estimated processing time: <span id="lm-area-processing-time" style="font-weight: bold"></span>
+						<span style="float: right; margin-right: 10px">
+							<button type="button" class="btn btn-danger btn-lg" data-target="#lm-modal-dialog"
+						 	id="lm-start-processing">Start Processing</button>
+						</span>
 				</div>
 			</div>
 		</div>
-		<div class="container-fluid" id="process_descrp_area">
-			<div class="row" >
-				<div id="descrp_header">
-					<h4>ELEVATION PROCESSING</h4>
-				</div>
-				<div id="descrp_body">
-				</div>
-				<div id="descrp_header">
-					<h4>FORESTRY PROCESSING</h4>
-				</div>
-				<div id="descrp_body">
-				</div>
-	</body>
+  </div>
+	<!-- Modal -->
+	<div id="lm-modal-dialog" class="modal fade" role="dialog">
+	  <div class="modal-dialog">
+
+	    <!-- Modal content-->
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal">&times;</button>
+	        <h4 class="modal-title">Modal Header</h4>
+	      </div>
+	      <div class="modal-body">
+	        <p>Some text in the modal.</p>
+	      </div>
+	      <div class="modal-footer">
+					<button type="button" class="btn btn-danger" id="lm-start-job" data-dismiss="modal">Ok</button>
+	        <button type="button" class="btn btn-primary btn-default" data-dismiss="modal">Cancel</button>
+	      </div>
+	    </div>
+
+	  </div>
+	</div>
+
+</body>
 </html>
