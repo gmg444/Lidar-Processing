@@ -174,8 +174,16 @@ def contours(input_file, output_file, clip_poly):
     poly = gpd.GeoDataFrame.from_file(output_file)
     poly.crs = {'init': 'epsg:3857'}
     poly = poly.to_crs({'init' :'epsg:4326'})
-    poly.to_file(output_file)
+    poly.to_file(output_file)  # , driver="GeoJSON")
 
 def save_to_shp(poly, out_file):
     poly = poly.to_crs({'init': 'epsg:3857'})
     poly.to_file(out_file)
+    # Clip shape file - note last param is input.
+    # ogr2ogr -clipsrc northampton.shp test_out.shp mosaic_contours.shp
+    # Convert to simplified geojson - note last param is input.
+    # ogr2ogr -f GeoJSON -simplify 0.00001 mosaic_contours_simplified.json mosaic_contours.shp
+    # Converts to topojson
+    # geo2topo tracts=mosaic_contours_simplified.json > mosaic_contours_simplified.topojson
+    # Quantize file to get rid of meaningless precision
+    # topoquantize 1e6 -o quantized.json mosaic_contours_simplified.topojson
