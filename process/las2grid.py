@@ -13,6 +13,7 @@ import utils as steps
 import tif2tree as tft
 import tif2terrain as tfterr
 import scipy.ndimage as ndi
+import utils
 
 """"
 Be sure laspy folder is in the current directory
@@ -120,7 +121,7 @@ def generate_grids(input_file):
     dem_file = new_file.replace("_dem_temp.tif", "_dem.tif")
     # -a argument required, with 0,0,0 - see http://gis.stackexchange.com/questions/143818/osgeo4w-and-gdal-gdal2tiles-py-error
     cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_fillnodata.py" -md 100 -b 1 -of GTiff {0} {1}'.format(new_file, dem_file)
-    sb.call(cmd, shell=False)
+    utils.exec_command_line(cmd)
 
     # buildings_cells = (class_arr == 1).astype(np.int32)
     # struct = ndi.generate_binary_structure(2, 1)

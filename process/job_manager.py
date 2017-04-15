@@ -49,6 +49,7 @@ class JobManager():
             where gid in (select min(gid) from job where status = 'ready')
             returning gid"""
         current_job = db.exec_sql(sql, [], True)
+        self.update_status("processing tiles")
         if type(current_job) is tuple:
             self.job_id = current_job[0]
             self.thread_list = []
@@ -58,43 +59,49 @@ class JobManager():
                 os.makedirs(self.work_path)
             tile_list = self.get_tiles_to_process()
             minx, miny, maxx, maxy = self.get_bounds()
-            if len(tile_list) < conf.num_threads:
-                self.num_threads = len(tile_list)
+            if conf.num_threads > 1:
+                if len(tile_list) < conf.num_threads:
+                    self.num_threads = len(tile_list)
+                else:
+                    self.num_threads = conf.num_threads
+                tile_count_step = len(tile_list) // self.num_threads # Integer division to get floow
+                args = [[] for x in range(conf.num_threads)]
+                for i in range(len(tile_list)):
+                    args[i % self.num_threads].append(tile_list[i])
+                pool = Pool(self.num_threads)
+                pool.map(process_tiles, args)
+                pool.close()
+                pool.join()
             else:
-                self.num_threads = conf.num_threads
-            tile_count_step = len(tile_list) // self.num_threads # Integer division to get floow
-            args = []
-            for i in range(self.num_threads):
-                tiles_this_thread = tile_list[tile_count_step * i:tile_count_step * (i+1)]
-                args.append(tiles_this_thread)
-                #  t = threading.Thread(target=self.process_tiles, args=(tiles_this_thread,))
-                # t = Process(target=self.process_tiles, args=(tiles_this_thread,))
-                # self.thread_list.append(t)
-                # t.start()
-            # for t in self.thread_list:
-            #     t.join()
-            self.update_status("processing tiles")
-            process_tiles(tile_list)
-            # pool = Pool(self.num_threads)
-            # pool.map(process_tiles, args)
-            # pool.close()
-            # pool.join()
+                process_tiles(tile_list)
+
             self.update_status("mosaicking tiles")
             utils.mosaic_tiles(self.work_path + "*_dsm.tif", self.work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy)
             utils.mosaic_tiles(self.work_path + "*_height.tif", self.work_path + "mosaic_height.tif", minx, miny, maxx, maxy)
             # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy)
             utils.mosaic_tiles(self.work_path + "*_dem.tif", self.work_path + "mosaic_dem.tif", minx, miny, maxx, maxy)
 
+            self.update_status("clipping tiles")
             sql = "select geom_txt from job where gid = {0}".format(self.job_id)
             wkt = db.exec_sql(sql, [], True)[0]
-            clip_poly = utils.get_clip_poly(wkt)
-            # utils.save_to_shp(clip_poly, self.work_path + "clip.shp")
-            # utils.set_no_data( self.work_path + "clip.shp")
+            clip_poly = self.work_path + "clip_poly.shp"
+            utils.save_clip_poly(wkt, clip_poly)
 
-            utils.merge_tiles(self.work_path + "*_trees.shp", self.work_path + "mosaic_trees.shp", clip_poly)
-            utils.merge_tiles(self.work_path + "*_bldgs.shp", self.work_path + "mosaic_bldgs.shp", clip_poly)
-            utils.merge_tiles(self.work_path + "*_impervious.shp", self.work_path + "mosaic_impervious.shp", clip_poly)
-            utils.contours(self.work_path + "mosaic_dem.tif", self.work_path + "mosaic_contours.shp", clip_poly)
+            tree_file = self.work_path + "mosaic_trees.shp"
+            utils.merge_tiles(self.work_path + "*_trees.shp", tree_file, clip_poly)
+            utils.finalize(tree_file, clip_poly)
+
+            bldgs_file = self.work_path + "mosaic_bldgs.shp"
+            utils.merge_tiles(self.work_path + "*_bldgs.shp", bldgs_file, clip_poly)
+            utils.finalize(bldgs_file, clip_poly)
+
+            impervious_file = self.work_path + "mosaic_impervious.shp"
+            utils.merge_tiles(self.work_path + "*_impervious.shp", impervious_file, clip_poly)
+            utils.finalize(impervious_file, clip_poly)
+
+            contours_file = self.work_path + "mosaic_contours.shp"
+            utils.contours(self.work_path + "mosaic_dem.tif", contours_file, clip_poly)
+            utils.finalize(contours_file, clip_poly)
 
             # utils.mosaic_tiles(self.work_path + "*_trees.tif", self.work_path + "mosaic_trees.tif", minx, miny, maxx, maxy)
             # self.update_status("generating map tiles")

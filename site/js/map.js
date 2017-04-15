@@ -218,10 +218,22 @@ lm.lmap =  new function () {
       true, response.data.polyWkt);
   };
 
- var displayJobStarted = function(){
-   alert("Job successfully started!");
-   $("#lm-area-status").html("In progress");
- }
+  var refreshStatus = function(job_id) {
+    $.get( that.ajaxUrl + "/job_status?job_id=" + job_id.toString(),
+      displayJobStatus, dataType="json");
+  };
+
+  var displayJobStatus = function(response){
+    $("#lm-area-status").html(response.data.description);
+    setTimeout(refreshStatus, 2000, response.data.job_id);
+  };
+
+  var displayJobStarted = function(response){
+    alert("Job successfully started!");
+    $("#lm-area-status").html("In progress");
+    var job_id = response.data.job_id;
+    refreshStatus(job_id);
+  };
 
   var displayAreaDetails = function(areaName, status, numTiles, area, showButton, wkt){
     $("#lm-start-processing").css("display", "none");
@@ -237,7 +249,6 @@ lm.lmap =  new function () {
           $.get( that.ajaxUrl + "/start_job?description=" + areaName + "&poly_wkt=" + wkt,
              displayJobStarted, dataType="json");
       });
-
     }
     $("#lm-start-processing").off("click").on("click", function(){
         $("#lm-modal-dialog .modal-body").html("Do you want to process this area?");

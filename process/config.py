@@ -12,4 +12,4 @@ db = {
     "password": "quagga"
 }
 is_amherst = False
-num_threads = 4
+num_threads = 1
