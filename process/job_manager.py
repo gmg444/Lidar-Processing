@@ -92,11 +92,11 @@ class JobManager():
             utils.finalize(tree_file, clip_poly)
 
             bldgs_file = self.work_path + "mosaic_bldgs.shp"
-            utils.merge_tiles(self.work_path + "*_bldgs.shp", bldgs_file, clip_poly)
+            utils.merge_tiles(self.work_path + "*_bldgs.shp", bldgs_file, clip_poly, 10)
             utils.finalize(bldgs_file, clip_poly)
 
             impervious_file = self.work_path + "mosaic_impervious.shp"
-            utils.merge_tiles(self.work_path + "*_impervious.shp", impervious_file, clip_poly)
+            utils.merge_tiles(self.work_path + "*_impervious.shp", impervious_file, clip_poly, 10)
             utils.finalize(impervious_file, clip_poly)
 
             contours_file = self.work_path + "mosaic_contours.shp"

@@ -144,16 +144,21 @@ def dissolve_polygon(infile, outfile):
     dissolved_tree_subset.to_file(outfile)
     return outfile
 
-def merge_tiles(wildcard_path, output_file, clip_poly):
+def merge_tiles(wildcard_path, output_file, clip_poly, remove_smaller_than=0):
     print ("Merge tiles", wildcard_path)
     files = gl.glob(wildcard_path)
     layers = []
     for f in files:
         layers.append(gpd.read_file(f))
     poly = gpd.GeoDataFrame(pd.concat(layers, ignore_index=True))
+    if remove_smaller_than > 0:
+        poly = poly[poly.geometry.area > remove_smaller_than]
     poly.crs = {'init': 'epsg:3857'}
-    poly = poly.to_crs({'init' :'epsg:4326'})
+    poly.geometry = poly.geometry.buffer(5)
     dissolved = poly.dissolve(by='FID')
+    dissolved.geometry = dissolved.geometry.buffer(-5)
+    dissolved.crs = {'init': 'epsg:3857'}
+    dissolved = dissolved.to_crs({'init' :'epsg:4326'})
     # This is the main output shape file
     dissolved.to_file(output_file)
 

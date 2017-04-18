@@ -22,10 +22,10 @@ def make(dem_file, trees_arr, intensity_arr, dsm_arr, height_arr):
 
     # Try to identify buildings
     buildings_arr = dsm_arr - dem_arr
-    buildings_arr[buildings_arr < 2] = 0
+    buildings_arr[buildings_arr < 3] = 0
     buildings_arr[trees_arr > 0] = 0
     buildings_arr[buildings_arr > 0] = 1
-    buildings_arr[height_arr > 0] = 0
+    buildings_arr[height_arr > 3] = 0
     # other_array = np.zeros(buildings_arr.shape)
     # other_array[buildings_arr < 1] = 1
     # other_array = ndi.binary_dilation(other_array, iterations=2)
