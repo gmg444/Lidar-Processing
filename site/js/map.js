@@ -20,22 +20,22 @@ lm.lmap =  new function () {
   // using "this.ini" let's us access init() from outside this module, as
   // long as we have a reference to "this".
   this.init = function(cfg, state){
-     that.state = state;
-     that.ajaxUrl = cfg.ajaxUrl;
-     // L is a global used by leaflet.  We can create the new leaflet map
-     // by passing in the div id into which we want to display the map.
-     map = L.map('map');
-     map.setView([cfg.startingLat, cfg.startingLon], cfg.startingZoom);
-     var mapLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}.png', {
-          minZoom: 5, maxZoom: 19
-     });
-     mapLayer.addTo(map);
-     setUpDraw();
+    that.state = state;
+    that.ajaxUrl = cfg.ajaxUrl;
+    // L is a global used by leaflet.  We can create the new leaflet map
+    // by passing in the div id into which we want to display the map.
+    map = L.map('map');
+    map.setView([cfg.startingLat, cfg.startingLon], cfg.startingZoom);
+    var mapLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}.png', {
+        minZoom: 5, maxZoom: 19
+    });
+    mapLayer.addTo(map);
+    setUpDraw();
 
-     // When the user clicks on the map, we want to take some action.
+    // When the user clicks on the map, we want to take some action.
     map.on("click", function(e){
       if (!drawingNow){
-        $.get( that.ajaxUrl + "/town_data?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng, displayTownData, dataType="json");
+          $.get( that.ajaxUrl + "/town_data?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng, displayTownData, dataType="json");
       }
     });
 
@@ -48,7 +48,13 @@ lm.lmap =  new function () {
 
   var selectArea = function(e){
     var selectedId = e.target.value;
-    $.get( that.ajaxUrl + "/layers_in_job?job_id=" + selectedId, displayAvailableLayers, dataType="json");
+    clearUserPolygons();
+    $.getJSON("/mosaic_trees.json",function(data){
+      // add GeoJSON layer to the map once the file is loaded
+      geoJsonLayer = L.geoJson(data);
+      geoJsonLayer.addTo(map);
+      map.fitBounds(geoJsonLayer.getBounds());
+    });
 
   };
 
@@ -73,7 +79,7 @@ lm.lmap =  new function () {
   var displayAvailableLayers = function(response){
     console.log(response);
     $("#lm-available-layers").css("display", "block");
-    $(".panel_content div").css("display", "none");
+    // $(".panel_content div").css("display", "none");
     for (var i=0; i<response.data.length; i++){
       $("#" + response.data[i].type).css("display", "inline-block");
       $("#" + response.data[i].type).attr("map_url", response.data[i].map_url);

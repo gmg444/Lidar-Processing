@@ -46,7 +46,7 @@ def make(dem_file, trees_arr, intensity_arr, dsm_arr, height_arr):
 
     # Convert to shape file
     in_shp = ut.make_polygon(dest_file, dest_file.replace(".tif", ".shp"), "buildings")
-    ut.dissolve_polygon(in_shp, in_shp)
+    ut.dissolve_polygon(in_shp, in_shp, 10)
 
     # Detect impervious surface
     impervious_arr = np.ones(buildings_arr.shape)
@@ -71,5 +71,5 @@ def make(dem_file, trees_arr, intensity_arr, dsm_arr, height_arr):
 
     # Convert to shape file
     in_shp = ut.make_polygon(dest_file, dest_file.replace(".tif", ".shp"), "impervious surfaces")
-    ut.dissolve_polygon(in_shp, in_shp)
+    ut.dissolve_polygon(in_shp, in_shp, 10)
 

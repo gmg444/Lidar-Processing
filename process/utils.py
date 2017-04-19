@@ -81,7 +81,7 @@ def add_srs_to_tiff(input_file, output_file, srid):
     cmd = conf.gdal_dir + "gdal_translate.exe -a_srs EPSG:{2} -a_nodata -1 {0} {1}".format(input_file, output_file, srid)
     exec_command_line(cmd)
 
-def mosaic_tiles(wildcard_path, output_file, minx, miny, maxx, maxy):
+def mosaic_tiles(wildcard_path, output_file, minx, miny, maxx, maxy, clip_poly):
     print ("Mosaicking tiles", wildcard_path)
     input_files = []
     for f_name in gl.glob(wildcard_path):
@@ -92,9 +92,11 @@ def mosaic_tiles(wildcard_path, output_file, minx, miny, maxx, maxy):
     # No data is -1 here - to  handle no data correctly, use add this command line:  -n -1
     # Problem is, this requires gdal_array, which is not provided with current version. see:
     # https://github.com/conda-forge/gdal-feedstock/issues/131
-    cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_merge.py" -ul_lr {0} {1} {2} {3} -a_nodata -1 -init -1 -n -1 -o {4} {5}'.format(minx, miny, maxx, maxy, output_file, tile_str)
+    temp_file = output_file.replace(".tif", "_temp.tif")
+    cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_merge.py" -ul_lr {0} {1} {2} {3} -a_nodata -1 -init -1 -n -1 -o {4} {5}'.format(minx, miny, maxx, maxy, temp_file, tile_str)
     exec_command_line(cmd)
-    return output_file
+    cmd = "gdalwarp -overwrite -s_srs EPSG:3857 -t_srs EPSG:3857 -r bilinear -dstnodata 0 -q -cutline {0} -dstalpha -of GTiff {1} {2}".format(clip_poly, temp_file, output_file)
+    exec_command_line(cmd)
 
 def create_output_tiles(mosaic, output_dir):
     # -a argument required, with 0,0,0 - see http://gis.stackexchange.com/questions/143818/osgeo4w-and-gdal-gdal2tiles-py-error
@@ -132,6 +134,7 @@ def make_polygon(infile, outfile, name):
     gdal.Polygonize(tree_band, None, dst_layer, 0, [], callback=None)
     return outfile
 
+""""
 def dissolve_polygon(infile, outfile):
     print ("Dissolve polygons", infile)
     tree_layer = gpd.read_file(infile)
@@ -143,6 +146,7 @@ def dissolve_polygon(infile, outfile):
     # head = dissolved_tree_subset.head()
     dissolved_tree_subset.to_file(outfile)
     return outfile
+"""
 
 def merge_tiles(wildcard_path, output_file, clip_poly, remove_smaller_than=0):
     print ("Merge tiles", wildcard_path)
@@ -151,8 +155,6 @@ def merge_tiles(wildcard_path, output_file, clip_poly, remove_smaller_than=0):
     for f in files:
         layers.append(gpd.read_file(f))
     poly = gpd.GeoDataFrame(pd.concat(layers, ignore_index=True))
-    if remove_smaller_than > 0:
-        poly = poly[poly.geometry.area > remove_smaller_than]
     poly.crs = {'init': 'epsg:3857'}
     poly.geometry = poly.geometry.buffer(5)
     dissolved = poly.dissolve(by='FID')
@@ -162,11 +164,13 @@ def merge_tiles(wildcard_path, output_file, clip_poly, remove_smaller_than=0):
     # This is the main output shape file
     dissolved.to_file(output_file)
 
-def dissolve_polygon(infile, outfile):
+def dissolve_polygon(infile, outfile, remove_smaller_than=0):
     print ("Dissolve polygons", infile)
     layer = gpd.read_file(infile )
     layer = layer[layer.Value == 1]
     layer = layer[['geometry','Value']]
+    if remove_smaller_than > 0:
+        layer = layer[layer.geometry.area > remove_smaller_than]
     #dissolve polygons by Value
     dissolved = layer.dissolve(by='Value')
     # dissolved_tree_subset.plot()
@@ -183,7 +187,7 @@ def save_clip_poly(wkt, clip_file):
 
 def contours(input_file, output_file, clip_poly):
     print ("Contours", input_file)
-    cmd = conf.gdal_dir + 'gdal_contour -a "elevation" -i 5.0 {0} {1}'.format(input_file, output_file)
+    cmd = conf.gdal_dir + 'gdal_contour -a "elevation" -i 3.0 {0} {1}'.format(input_file, output_file)
     exec_command_line(cmd)
     poly = gpd.GeoDataFrame.from_file(output_file)
     poly.crs = {'init': 'epsg:3857'}
@@ -213,13 +217,13 @@ def finalize(merged_file, clip_poly):
     geo_json_file = merged_file.replace(".shp", ".json")
     cmd = "ogr2ogr -f GeoJSON -simplify 0.00001 {0} {1}".format(geo_json_file, clipped_file)
     exec_command_line(cmd)
-    # Converts to topojson
-    topo_json_file = merged_file.replace(".shp", ".topojson")
-    cmd = "geo2topo tracts={0} > {1}".format(geo_json_file, topo_json_file)
-    # Shell has to be true for node commands to work
-    exec_command_line(cmd, True)
-    # Quantize file to get rid of meaningless precision
-    quantized_file = merged_file.replace(".shp", "_quantized.topojson")
-    cmd  = "topoquantize 1e6 -o {0} {1}".format(quantized_file, topo_json_file)
-    exec_command_line(cmd, True)
+    # # Converts to topojson
+    # topo_json_file = merged_file.replace(".shp", ".topojson")
+    # cmd = "geo2topo tracts={0} > {1}".format(geo_json_file, topo_json_file)
+    # # Shell has to be true for node commands to work
+    # exec_command_line(cmd, True)
+    # # Quantize file to get rid of meaningless precision
+    # quantized_file = merged_file.replace(".shp", "_quantized.topojson")
+    # cmd  = "topoquantize 1e6 -o {0} {1}".format(quantized_file, topo_json_file)
+    # exec_command_line(cmd, True)
 

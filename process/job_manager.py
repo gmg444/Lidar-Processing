@@ -75,17 +75,17 @@ class JobManager():
             else:
                 process_tiles(tile_list)
 
-            self.update_status("mosaicking tiles")
-            utils.mosaic_tiles(self.work_path + "*_dsm.tif", self.work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy)
-            utils.mosaic_tiles(self.work_path + "*_height.tif", self.work_path + "mosaic_height.tif", minx, miny, maxx, maxy)
-            # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy)
-            utils.mosaic_tiles(self.work_path + "*_dem.tif", self.work_path + "mosaic_dem.tif", minx, miny, maxx, maxy)
-
-            self.update_status("clipping tiles")
+            self.update_status("saving clip file")
             sql = "select geom_txt from job where gid = {0}".format(self.job_id)
             wkt = db.exec_sql(sql, [], True)[0]
             clip_poly = self.work_path + "clip_poly.shp"
             utils.save_clip_poly(wkt, clip_poly)
+
+            self.update_status("mosaicking tiles")
+            utils.mosaic_tiles(self.work_path + "*_dsm.tif", self.work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy, clip_poly)
+            utils.mosaic_tiles(self.work_path + "*_height.tif", self.work_path + "mosaic_height.tif", minx, miny, maxx, maxy, clip_poly)
+            # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy, clip_poly)
+            utils.mosaic_tiles(self.work_path + "*_dem.tif", self.work_path + "mosaic_dem.tif", minx, miny, maxx, maxy, clip_poly)
 
             tree_file = self.work_path + "mosaic_trees.shp"
             utils.merge_tiles(self.work_path + "*_trees.shp", tree_file, clip_poly)

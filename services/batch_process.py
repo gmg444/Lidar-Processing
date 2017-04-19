@@ -34,7 +34,7 @@ def get_tile_list(wkt):
     return results
 
 def get_job_list():
-    sql = "select gid, description from job where coalesce(description,'') <> '' order by gid, description"
+    sql = "select gid, description from job where coalesce(description,'') <> '' and status like 'job complete%' order by gid, description"
     cnxn = pg.connect(host=conf.db["host"], database=conf.db["database"], user=conf.db["user"], password=conf.db["password"])
     cursor = cnxn.cursor()
     cursor.execute(sql)
