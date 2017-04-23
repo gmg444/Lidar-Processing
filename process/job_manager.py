@@ -89,19 +89,19 @@ class JobManager():
 
             tree_file = self.work_path + "mosaic_trees.shp"
             utils.merge_tiles(self.work_path + "*_trees.shp", tree_file, clip_poly)
-            utils.finalize(tree_file, clip_poly)
+            utils.finalize(tree_file, clip_poly, self.job_id)
 
             bldgs_file = self.work_path + "mosaic_bldgs.shp"
             utils.merge_tiles(self.work_path + "*_bldgs.shp", bldgs_file, clip_poly, 10)
             utils.finalize(bldgs_file, clip_poly)
 
-            impervious_file = self.work_path + "mosaic_impervious.shp"
-            utils.merge_tiles(self.work_path + "*_impervious.shp", impervious_file, clip_poly, 10)
-            utils.finalize(impervious_file, clip_poly)
+            # impervious_file = self.work_path + "mosaic_impervious.shp"
+            # utils.merge_tiles(self.work_path + "*_impervious.shp", impervious_file, clip_poly, 10)
+            # utils.finalize(impervious_file, clip_poly, self.job_id)
 
             contours_file = self.work_path + "mosaic_contours.shp"
             utils.contours(self.work_path + "mosaic_dem.tif", contours_file, clip_poly)
-            utils.finalize(contours_file, clip_poly)
+            utils.finalize(contours_file, clip_poly, self.job_id)
 
             # utils.mosaic_tiles(self.work_path + "*_trees.tif", self.work_path + "mosaic_trees.tif", minx, miny, maxx, maxy)
             # self.update_status("generating map tiles")

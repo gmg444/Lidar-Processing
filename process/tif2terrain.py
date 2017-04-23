@@ -48,28 +48,28 @@ def make(dem_file, trees_arr, intensity_arr, dsm_arr, height_arr):
     in_shp = ut.make_polygon(dest_file, dest_file.replace(".tif", ".shp"), "buildings")
     ut.dissolve_polygon(in_shp, in_shp, 10)
 
-    # Detect impervious surface
-    impervious_arr = np.ones(buildings_arr.shape)
-    impervious_arr[intensity_arr > 10000] = 0
-    impervious_arr[intensity_arr < 0] = 0
-    impervious_arr[buildings_arr > 0] = 0
-    impervious_arr[trees_arr > 0] = 0
-    impervious_arr[height_arr > 1] = 0
-    impervious_arr = ndi.binary_dilation(impervious_arr, iterations=2)
-
-    # Output as tiff
-    dest_file = dem_file.replace("_dem.tif", "_impervious.tif")
-    driver = gdal.GetDriverByName('GTiff')
-    #Create new tiff file, write array to tiff file
-    dataset = driver.Create(dest_file, impervious_arr.shape[1], impervious_arr.shape[0], 1, gdal.GDT_Byte)
-    dataset.GetRasterBand(1).WriteArray(impervious_arr)
-    #Set spatial reference and projection of output file to same as input file
-    dataset.SetGeoTransform(geotrans)
-    dataset.SetProjection(proj)
-    dataset.FlushCache()
-    dataset = None
-
-    # Convert to shape file
-    in_shp = ut.make_polygon(dest_file, dest_file.replace(".tif", ".shp"), "impervious surfaces")
-    ut.dissolve_polygon(in_shp, in_shp, 10)
+    # # Detect impervious surface
+    # impervious_arr = np.ones(buildings_arr.shape)
+    # impervious_arr[intensity_arr > 10000] = 0
+    # impervious_arr[intensity_arr < 0] = 0
+    # impervious_arr[buildings_arr > 0] = 0
+    # impervious_arr[trees_arr > 0] = 0
+    # impervious_arr[height_arr > 1] = 0
+    # impervious_arr = ndi.binary_dilation(impervious_arr, iterations=2)
+    #
+    # # Output as tiff
+    # dest_file = dem_file.replace("_dem.tif", "_impervious.tif")
+    # driver = gdal.GetDriverByName('GTiff')
+    # #Create new tiff file, write array to tiff file
+    # dataset = driver.Create(dest_file, impervious_arr.shape[1], impervious_arr.shape[0], 1, gdal.GDT_Byte)
+    # dataset.GetRasterBand(1).WriteArray(impervious_arr)
+    # #Set spatial reference and projection of output file to same as input file
+    # dataset.SetGeoTransform(geotrans)
+    # dataset.SetProjection(proj)
+    # dataset.FlushCache()
+    # dataset = None
+    #
+    # # Convert to shape file
+    # in_shp = ut.make_polygon(dest_file, dest_file.replace(".tif", ".shp"), "impervious surfaces")
+    # ut.dissolve_polygon(in_shp, in_shp, 10)
 

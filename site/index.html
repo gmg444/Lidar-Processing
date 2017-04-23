@@ -12,6 +12,7 @@
 		<script src="lib/bootstrap/js/bootstrap.min.js"></script>
 		<script src="lib/leaflet/leaflet.js"></script>
 	  <script src="lib/leaflet-draw/leaflet.draw.js"></script>
+		<script src="js/coverage.json"></script>
 		<script src="js/lm.js"></script>
 		<script src="js/map.js"></script>
 </head>
@@ -21,7 +22,7 @@
 		<div class="container-fluid">
    		<div class="row" id="banner">
 	   		<div id="semi_circle">
-	    		<div id="circle_text">LIDAR MAPS
+	    		<div id="circle_text"><a href="#" id="lm-about-link">LIDAR MAPS</a>
 	    		</div>
 	    	</div>
     	</div>
@@ -40,10 +41,9 @@
 						Available Layers
 					</div>
 					<div class="panel_content">
-				    <div><input type="radio" name="optionsRadios" id="trees" value="trees" /> Trees <a href-="#">v</a></div>
-						<div><input type="radio" name="optionsRadios" id="buildings" value="buildings" /> Buildings <a href-="#">v</a></div>
-						<div><input type="radio" name="optionsRadios" id="contours" value="contours" /> Elevation Contours<a href-="#">v</a></div>
-						<div><input type="radio" name="optionsRadios" id="impervious" value="impervious" /> Impervious Surfaces <a href-="#">v</a></div>
+				    <div><input type="radio" name="optionsRadios" id="trees" value="trees" /> Trees</div>
+						<div><input type="radio" name="optionsRadios" id="buildings" value="buildings" /> Buildings</div>
+						<div><input type="radio" name="optionsRadios" id="contours" value="contours" /> Elevation Contours</div>
 					</div>
 				</div>
 			<div id="map"></div>
@@ -63,11 +63,9 @@
 			</div>
 		</div>
   </div>
-	<!-- Modal -->
+	<!-- Generic modal dialog -->
 	<div id="lm-modal-dialog" class="modal fade" role="dialog">
 	  <div class="modal-dialog">
-
-	    <!-- Modal content-->
 	    <div class="modal-content">
 	      <div class="modal-header">
 	        <button type="button" class="close" data-dismiss="modal">&times;</button>
@@ -81,9 +79,37 @@
 	        <button type="button" class="btn btn-primary btn-default" data-dismiss="modal">Cancel</button>
 	      </div>
 	    </div>
-
 	  </div>
 	</div>
-
+	<div id="lm-modal-about" class="modal fade" role="dialog">
+	  <div class="modal-dialog">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal">&times;</button>
+	        <h4 class="modal-title">About Lidar Maps</h4>
+	      </div>
+	      <div class="modal-body">
+	        <p>This site provides a web interface to airborne lidar point cloud data
+						as organized and published as part of the NOAA Office for Coastal Management
+						<a href="https://coast.noaa.gov/dataviewer/#/lidar/search/" target="_blank">
+						data access viewer</a>.</p>
+					<p>This site was developed with contributions from Chong Di, Adrian Ferrar,
+						Pearl Leff, Fred Ng, Lerone Savage, Anne Schwenker, and Shantal Taveras,
+						with Gordon M. Green, PhD, lead developer, based on these software components:</p>
+					 <p>Leaflet, GDAL, OGR, LasPy, Python/Numpy/SciPy, CherryPy, Pandas, SciKit
+						 Image, GeoPandas, Fiona, Shapely, Descartes, and Pyproj.</p>
+					 <p>To view an existing map generated from lidar, aelect an area
+						 using the drop-down list in the upper-right hand corner. To
+					  generate a new set of map layers, select "generate new" from the list,
+					 and select a town within the shaded area by clicking, or draw a polygon
+				 using the drawing tools in the upper left of the map.</p>
+	      </div>
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-primary btn-default"
+						data-dismiss="modal">Close</button>
+	      </div>
+	    </div>
+	  </div>
+	</div>
 </body>
 </html>

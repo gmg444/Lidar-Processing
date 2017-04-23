@@ -207,7 +207,7 @@ def save_to_shp(poly, out_file):
     # Quantize file to get rid of meaningless precision
     # topoquantize 1e6 -o quantized.json mosaic_contours_simplified.topojson
 
-def finalize(merged_file, clip_poly):
+def finalize(merged_file, clip_poly, job_id):
     print ("Finalize", merged_file)
     clipped_file = merged_file.replace(".shp", "_clip.shp")
     # Clip to selected area
@@ -217,6 +217,9 @@ def finalize(merged_file, clip_poly):
     geo_json_file = merged_file.replace(".shp", ".json")
     cmd = "ogr2ogr -f GeoJSON -simplify 0.00001 {0} {1}".format(geo_json_file, clipped_file)
     exec_command_line(cmd)
+    out_file = conf.output_path + str(job_id) + "_" + clipped_file.replace("_clip", "")
+    cmd = "copy {0} {1}".format(clipped_file, out_file)
+    exec_command_line(cmd, shell_flag=True)
     # # Converts to topojson
     # topo_json_file = merged_file.replace(".shp", ".topojson")
     # cmd = "geo2topo tracts={0} > {1}".format(geo_json_file, topo_json_file)

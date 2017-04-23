@@ -7,7 +7,7 @@ def get_polygon_data(coords):
     sql = """SELECT st_asgeojson(st_geomfromtext('{0}', 4326)), count(distinct b.gid),Coalesce(ST_Area(ST_Union(b.geom))/10000.0, 0),
         minorcivna, state_name,  Coalesce(areasqkm, 0)
         FROM us_town a left outer join tile_index b
-        on ST_Within(b.geom, a.geom)
+        on ST_Intersects(b.geom, a.geom)
         WHERE ST_Intersects(b.geom,
         st_geomfromtext('{2}', 4326))
         group by a.geom,  minorcivna, state_name,  areasqkm""".format(sWkt, sWkt, sWkt)

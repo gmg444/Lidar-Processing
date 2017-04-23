@@ -11,10 +11,12 @@ lm.lmap =  new function () {
   var that = this;
   var map = null;
   var geoJsonLayer = null;
+  var coverageLayer = null;
   var editingLayer = null;
-  var currentLayers = null;
   var currentSelectedLayer = null;
   var drawingNow = false;
+  var drawControl = null;
+  var selectMode = false;
 
   // We keep these variables private inside this curent "closure" scope.
   // using "this.ini" let's us access init() from outside this module, as
@@ -22,6 +24,7 @@ lm.lmap =  new function () {
   this.init = function(cfg, state){
     that.state = state;
     that.ajaxUrl = cfg.ajaxUrl;
+
     // L is a global used by leaflet.  We can create the new leaflet map
     // by passing in the div id into which we want to display the map.
     map = L.map('map');
@@ -30,11 +33,9 @@ lm.lmap =  new function () {
         minZoom: 5, maxZoom: 19
     });
     mapLayer.addTo(map);
-    setUpDraw();
-
     // When the user clicks on the map, we want to take some action.
     map.on("click", function(e){
-      if (!drawingNow){
+      if (selectMode && !drawingNow){
           $.get( that.ajaxUrl + "/town_data?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng, displayTownData, dataType="json");
       }
     });
@@ -49,16 +50,32 @@ lm.lmap =  new function () {
   var selectArea = function(e){
     var selectedId = e.target.value;
     clearUserPolygons();
-    $.getJSON("/mosaic_trees.json",function(data){
-      // add GeoJSON layer to the map once the file is loaded
-      geoJsonLayer = L.geoJson(data);
-      geoJsonLayer.addTo(map);
-      map.fitBounds(geoJsonLayer.getBounds());
-    });
-
+    if (selectedId == -1){
+      setUpDraw();
+      selectMode = true;
+      coverageLayer = L.geoJson(coverage, {
+        style: {
+          "color": "#F99",
+          "fillColor": "#999",
+          "weight": 1,
+          "fillOpacity": 0.3,
+          "opacity": 0.7
+        }
+      });
+      coverageLayer.addTo(map);
+      map.fitBounds(coverageLayer.getBounds());
+    }
+    else{
+      selectMode = false;
+      map.removeLayer(coverageLayer);
+      map.removeControl(drawControl);
+    }
   };
 
   var displayCompletedJobs = function(response){
+      $("#lm-select-area").append($("<option></option>")
+                  .attr("value", -1)
+                  .text("Select a new area to process"));
       if (response.data && (response.data.length > 0)){
         for (var i=0; i<response.data.length; i++){
           $("#lm-select-area").append($("<option></option>")
@@ -74,42 +91,30 @@ lm.lmap =  new function () {
      "; lng:" + e.latlng.lng.toFixed(3).toString() +
      "; zoom:" + map.getZoom().toString()
    );
- };
-
-  var displayAvailableLayers = function(response){
-    console.log(response);
-    $("#lm-available-layers").css("display", "block");
-    // $(".panel_content div").css("display", "none");
-    for (var i=0; i<response.data.length; i++){
-      $("#" + response.data[i].type).css("display", "inline-block");
-      $("#" + response.data[i].type).attr("map_url", response.data[i].map_url);
-      $("#" + response.data[i].type).attr("data_url", response.data[i].data_url);
-    }
-    currentLayers = response.data;
   };
 
   var selectLayer = function(e){
-    if (currentLayers){
-        if (currentSelectedLayer){
-            map.removeLayer(currentSelectedLayer);
-        }
-        var mapUrl = $(e.currentTarget).parent().attr("map_url");
-        currentSelectedLayer = L.tileLayer('tiles/80/dsm/{z}/{x}/{y}.png',
-        {
-          maxNativeZoom: 16,
-          maxZoom: 18,
-          minZoom: 10,
-          bounds: [
-            [42.282, -72.684],
-            [42.376, -72.574]
-          ],
-          tileloadstart: function(tile, url){
-          console.log(tile + " " + url);
-        },
-        tms: false
-      }).addTo(map);
-    }
-    console.log(e.target.id);
+     clearUserPolygons();
+      if (currentSelectedLayer){
+          map.removeLayer(currentSelectedLayer);
+      }
+      var job_id = $("#lm-available-layers").value();
+      var layerType = $(e.currentTarget).parent().attr("id");
+      var url = "output/" + job_id.toString() + "_" + layerType + "_mosaic.json";
+      $.getJSON(url,function(data){
+        // add GeoJSON layer to the map once the file is loaded
+        currentSelectedLayer = L.geoJson(data, {
+          style: {
+             "color": "#9F9",
+             "fillColor": "#F99",
+             "weight": 1,
+             "fillOpacity": 0.3,
+             "opacity": 0.7
+          }
+        });
+        currentSelectedLayer.addTo(map);
+        map.fitBounds(currentSelectedLayer.getBounds());
+      });
   };
 
   var clearUserPolygons = function(){
@@ -127,8 +132,10 @@ lm.lmap =  new function () {
     // ****************************************************************
     // Initialize the FeatureGroup to store editable layers
     var drawnItems = new L.FeatureGroup().addTo(map);
-
-    var drawControl = new L.Control.Draw({
+    if (drawControl){
+        map.removeControl(drawControl);
+    }
+    drawControl = new L.Control.Draw({
         draw: {
             position: 'topleft',
             polygon: {
@@ -176,8 +183,6 @@ lm.lmap =  new function () {
         }
         $(".leaflet-clickable").attr("fill", "#000000");
         $(".leaflet-draw-actions a").css("color", "rgb(255,255,255)");
-        $(".leaflet-draw-draw-polygon").prop("title", "Draw your solar installation");
-        $(".leaflet-draw-edit-edit").prop("title", "Edit the drawn solar installation");
     });
 
     map.on('draw:editstart', function () {
@@ -201,7 +206,16 @@ lm.lmap =  new function () {
       status = "Not available";
     }
     if (response.data.polyGeoJson){
-      geoJsonLayer = L.geoJson($.parseJSON(response.data.polyGeoJson)).addTo(map);
+      geoJsonLayer = L.geoJson($.parseJSON(response.data.polyGeoJson),
+      {
+       style: {
+         "color": "#99F",
+         "fillColor": "#F99",
+         "weight": 2,
+         "fillOpacity": 0.3,
+         "opacity": 0.7
+       }
+      }).addTo(map);
       map.fitBounds(geoJsonLayer.getBounds());
     }
 
@@ -217,7 +231,15 @@ lm.lmap =  new function () {
     if (response.data.numTiles == 0){
       status = "Not available";
     }
-    geoJsonLayer = L.geoJson($.parseJSON(response.data.polyGeoJson)).addTo(map);
+    geoJsonLayer = L.geoJson($.parseJSON(response.data.polyGeoJson), {
+      style: {
+        "color": "#99F",
+        "fillColor": "#F99",
+        "weight": 2,
+        "fillOpacity": 0.3,
+        "opacity": 0.7
+      }
+    }).addTo(map);
     map.fitBounds(geoJsonLayer.getBounds());
     displayAreaDetails(response.data.townName + ", " + response.data.stateName,
       status, response.data.numTiles, response.data.townArea,

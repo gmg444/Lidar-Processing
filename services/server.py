@@ -62,6 +62,7 @@ class Server(object):
         try:
             job_status, tile_status, percent_done = bp.job_status(int(job_id))
             result["data"]["description"] = job_status
+            result["data"]["job_id"] = job_id
             result["data"]["tile_status"] = tile_status
             result["data"]["percent_done"] = percent_done
         except Exception as e:
@@ -90,44 +91,6 @@ class Server(object):
         try:
             job_list = bp.get_job_list()
             result["data"] = job_list
-        except Exception as e:
-            result["status"] = 500
-            result["message"] = "{0} {1}".format(e, tb.format_exc())
-        return self.encode_results(result)
-
-    @cherrypy.expose
-    def layers_in_job(self, job_id):
-        # Cancels the job.
-        # Example: http://localhost:8080/layers_in_job?job_id=45
-        result = self.get_response_wrapper()
-        try:
-            result["data"] = [
-                {
-                    "type": "dsm",
-                    "map_url": "tiles/80/dsm",
-                    "data_url": "tiles/80/dsm_mosaic.tif"
-                },
-                {
-                    "type": "dem",
-                    "map_url": "tiles/80/dem",
-                    "data_url": "tiles/80/dem_mosaic.tif"
-                },
-                {
-                    "type": "height",
-                    "map_url": "tiles/80/height",
-                    "data_url": "tiles/80/height_mosaic.tif"
-                },
-                {
-                    "type": "insolation",
-                    "map_url": "tiles/80/insolation",
-                    "data_url": "tiles/80/insolation_mosaic.tif"
-                },
-                {
-                    "type": "tree",
-                    "map_url": "tiles/80/tree",
-                    "data_url": "tiles/80/tree_mosaic.tif"
-                },
-            ]
         except Exception as e:
             result["status"] = 500
             result["message"] = "{0} {1}".format(e, tb.format_exc())

@@ -8,6 +8,8 @@ var lm = window.lm || {};
 
 // After the document is loaded according to jquery, set up our code.
 $(document).ready(function(){
+  $("#lm-modal-about").modal();
+  $("#lm-about-link").on("click", function(){$("#lm-modal-about").modal(); });
 
   // Set up configuration information - put anything that is likely to change
   // after the site is up and running here, so we don't have to go fishing through.
