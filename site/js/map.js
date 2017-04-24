@@ -60,19 +60,39 @@ lm.lmap =  new function () {
           "weight": 1,
           "fillOpacity": 0.3,
           "opacity": 0.7
+        },
+        onEachFeature: function(feature, layer) {
+          layer.on('click', function(e) {
+            map.fitBounds(e.target.getBounds());
+            layer.off('click');
+          });
         }
       });
       coverageLayer.addTo(map);
       map.fitBounds(coverageLayer.getBounds());
+      $("#lm-available-layers").css("display", "none");
     }
-    else{
+    else if(selectedId == 0){
       selectMode = false;
       map.removeLayer(coverageLayer);
       map.removeControl(drawControl);
+      $("#lm-available-layers").css("display", "none");
+    }
+    else{
+      $("#lm-available-layers").css("display", "block");
+      $("input:radio:first").prop("checked", true).trigger("change");
+      var job_id = $("#lm-select-area").val();
+      $("#lm-dem-link").attr("href", "output/" + job_id.toString() + "_mosaic_dem.tif");
+      $("#lm-dsm-link").attr("href", "output/" + job_id.toString() + "_mosaic_dsm.tif");
+      $("#lm-chm-link").attr("href", "output/" + job_id.toString() + "_mosaic_height.tif");
     }
   };
 
   var displayCompletedJobs = function(response){
+      $("#lm-select-area").empty();
+      $("#lm-select-area").append($("<option></option>")
+                  .attr("value", 0)
+                  .text("Available maps"));
       $("#lm-select-area").append($("<option></option>")
                   .attr("value", -1)
                   .text("Select a new area to process"));
@@ -98,20 +118,31 @@ lm.lmap =  new function () {
       if (currentSelectedLayer){
           map.removeLayer(currentSelectedLayer);
       }
-      var job_id = $("#lm-available-layers").value();
-      var layerType = $(e.currentTarget).parent().attr("id");
-      var url = "output/" + job_id.toString() + "_" + layerType + "_mosaic.json";
+      var job_id = $("#lm-select-area").val();
+      var layerType = $(e.currentTarget).attr("id");
+      var url = "output/" + job_id.toString() + "_mosaic_" + layerType + ".json";
+      var color = "#A36";
+      var fillColor = "#3A6"
+      var width = 1;
+      if (layerType == "bldgs"){
+        color = "#36A";
+        fillColor = "#A63"
+      }
+      if (layerType == "contours"){
+        color = "#A36";
+        width = 2;
+      }
       $.getJSON(url,function(data){
         // add GeoJSON layer to the map once the file is loaded
         currentSelectedLayer = L.geoJson(data, {
-          style: {
-             "color": "#9F9",
-             "fillColor": "#F99",
-             "weight": 1,
-             "fillOpacity": 0.3,
+         style: {
+             "color": color,
+             "fillColor": fillColor,
+             "weight": width,
+             "fillOpacity": 0.8,
              "opacity": 0.7
-          }
-        });
+           }
+         });
         currentSelectedLayer.addTo(map);
         map.fitBounds(currentSelectedLayer.getBounds());
       });
@@ -253,7 +284,10 @@ lm.lmap =  new function () {
 
   var displayJobStatus = function(response){
     $("#lm-area-status").html(response.data.description);
-    setTimeout(refreshStatus, 2000, response.data.job_id);
+    if (response.data.description.indexOf('complete') == -1)
+      setTimeout(refreshStatus, 2000, response.data.job_id);
+    else
+      $.get( that.ajaxUrl + "/completed_jobs", displayCompletedJobs, dataType="json");
   };
 
   var displayJobStarted = function(response){
@@ -267,22 +301,30 @@ lm.lmap =  new function () {
     $("#lm-start-processing").css("display", "none");
     $("#lm-area-details").css("display", "block");
     $("#lm-area-name").html(areaName);
-    $("#lm-area-status").html(status);
-    $("#lm-area-processing-time").html((numTiles / 39.0).toFixed(2) + " hours");
-    $("#lm-area-processing-area").html(area.toFixed(1) +  "km^2");
+    if (numTiles > 50){
+      $("#lm-area-status").html("The selected area is too large to process. " +
+        "Please select another.");
+        $("#lm-area-processing-time").html("");
+    }
+    else{
+      $("#lm-area-status").html(status);
+      $("#lm-area-processing-time").html((numTiles / 39.0).toFixed(2) + " hours");
+      $("#lm-area-processing-area").html(area.toFixed(1) +  "km^2");
 
-    if (showButton){
-      $("#lm-start-processing").css("display", "block");
-      $("#lm-start-job").off("click").on("click", function(){
-          $.get( that.ajaxUrl + "/start_job?description=" + areaName + "&poly_wkt=" + wkt,
-             displayJobStarted, dataType="json");
+      if (showButton){
+        $("#lm-start-processing").css("display", "block");
+        $("#lm-start-job").off("click").on("click", function(){
+            $.get( that.ajaxUrl + "/start_job?description=" + areaName + "&poly_wkt=" + wkt,
+               displayJobStarted, dataType="json");
+            $("#lm-start-processing").css("display", "none");
+        });
+      }
+      $("#lm-start-processing").off("click").on("click", function(){
+          $("#lm-modal-dialog .modal-body").html("Do you want to process this area?");
+          $("#lm-modal-dialog .modal-title").html("Launch Process");
+          $("#lm-modal-dialog").modal();
       });
     }
-    $("#lm-start-processing").off("click").on("click", function(){
-        $("#lm-modal-dialog .modal-body").html("Do you want to process this area?");
-        $("#lm-modal-dialog .modal-title").html("Launch Process");
-        $("#lm-modal-dialog").modal();
-    });
   };
 
   this.update = function(newState){

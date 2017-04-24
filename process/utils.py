@@ -8,6 +8,7 @@ import gdal
 import pandas as pd
 import geopandas as gpd
 from shapely.wkt import loads
+import os
 
 def exec_command_line(cmd, shell_flag=False):
     print (cmd)
@@ -81,7 +82,7 @@ def add_srs_to_tiff(input_file, output_file, srid):
     cmd = conf.gdal_dir + "gdal_translate.exe -a_srs EPSG:{2} -a_nodata -1 {0} {1}".format(input_file, output_file, srid)
     exec_command_line(cmd)
 
-def mosaic_tiles(wildcard_path, output_file, minx, miny, maxx, maxy, clip_poly):
+def mosaic_tiles(wildcard_path, output_file, minx, miny, maxx, maxy, clip_poly, job_id):
     print ("Mosaicking tiles", wildcard_path)
     input_files = []
     for f_name in gl.glob(wildcard_path):
@@ -97,6 +98,9 @@ def mosaic_tiles(wildcard_path, output_file, minx, miny, maxx, maxy, clip_poly):
     exec_command_line(cmd)
     cmd = "gdalwarp -overwrite -s_srs EPSG:3857 -t_srs EPSG:3857 -r bilinear -dstnodata 0 -q -cutline {0} -dstalpha -of GTiff {1} {2}".format(clip_poly, temp_file, output_file)
     exec_command_line(cmd)
+    public_file = conf.output_path + str(job_id) + "_" + os.path.basename(output_file)
+    cmd = "copy {0} {1}".format(output_file.replace("/", "\\"), public_file.replace("/", "\\"))
+    exec_command_line(cmd, shell_flag=True)
 
 def create_output_tiles(mosaic, output_dir):
     # -a argument required, with 0,0,0 - see http://gis.stackexchange.com/questions/143818/osgeo4w-and-gdal-gdal2tiles-py-error
@@ -217,8 +221,8 @@ def finalize(merged_file, clip_poly, job_id):
     geo_json_file = merged_file.replace(".shp", ".json")
     cmd = "ogr2ogr -f GeoJSON -simplify 0.00001 {0} {1}".format(geo_json_file, clipped_file)
     exec_command_line(cmd)
-    out_file = conf.output_path + str(job_id) + "_" + clipped_file.replace("_clip", "")
-    cmd = "copy {0} {1}".format(clipped_file, out_file)
+    out_file = conf.output_path + str(job_id) + "_" + os.path.basename(geo_json_file)
+    cmd = "copy {0} {1}".format(geo_json_file.replace("/", "\\"), out_file.replace("/", "\\"))
     exec_command_line(cmd, shell_flag=True)
     # # Converts to topojson
     # topo_json_file = merged_file.replace(".shp", ".topojson")

@@ -30,7 +30,7 @@
     <div class="container-fluid">
     	<div class="row" id="intro_area" >
 				<span class="header-description">Select an available map or a new area to process</span>
-				<select class="form-control" id="lm-select-area" style="float: right; margin: 10px; width: 200px">
+				<select class="form-control" id="lm-select-area" style="float: right; margin: 10px; width: 350px">
 				  <option selected value="0">Available maps</option>
 				</select>
     	</div>
@@ -42,8 +42,13 @@
 					</div>
 					<div class="panel_content">
 				    <div><input type="radio" name="optionsRadios" id="trees" value="trees" /> Trees</div>
-						<div><input type="radio" name="optionsRadios" id="buildings" value="buildings" /> Buildings</div>
+						<div><input type="radio" name="optionsRadios" id="bldgs" value="bldgs" /> Buildings</div>
 						<div><input type="radio" name="optionsRadios" id="contours" value="contours" /> Elevation Contours</div>
+    			  <div style="margin-top: 10px; text-align: left">
+							<a id="lm-dem-link" style="color: red" href="#">dem</a>
+							<a id="lm-dsm-link" style="color: red" href="#">dsm</a>
+							<a id="lm-chm-link" style="color: red" href="#">chm</a>
+						</div>
 					</div>
 				</div>
 			<div id="map"></div>
@@ -93,10 +98,15 @@
 						as organized and published as part of the NOAA Office for Coastal Management
 						<a href="https://coast.noaa.gov/dataviewer/#/lidar/search/" target="_blank">
 						data access viewer</a>.</p>
-					<p>This site was developed with contributions from Chong Di, Adrian Ferrar,
+						<p>To view an existing map generated from lidar, aelect an area
+ 						 using the drop-down list in the upper-right hand corner. To
+ 					  generate a new set of map layers, select "generate new" from the list,
+ 					 and select a town within the shaded area by clicking, or draw a polygon
+ 				 using the drawing tools in the upper left of the map.</p>
+				 <p>This site was developed with contributions from Chong Di, Adrian Ferrar,
 						Pearl Leff, Fred Ng, Lerone Savage, Anne Schwenker, and Shantal Taveras,
-						with Gordon M. Green, PhD, lead developer, based on these software components:</p>
-					 <p>Leaflet, GDAL, OGR, LasPy, Python/Numpy/SciPy, CherryPy, Pandas, SciKit
+						with Gordon M. Green, PhD, lead developer, using on these software components:</p>
+					 <p>Leaflet, GDAL, OGR, LASPy, Python/Numpy/SciPy, CherryPy, Pandas, SciKit
 						 Image, GeoPandas, Fiona, Shapely, Descartes, and Pyproj.</p>
 					 <p>To view an existing map generated from lidar, aelect an area
 						 using the drop-down list in the upper-right hand corner. To

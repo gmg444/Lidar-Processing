@@ -16,9 +16,9 @@ $(document).ready(function(){
   // the code to make changes.
   var config = {
     ajaxUrl: "http://localhost:8080/",
-    startingLat: 42.3251,
-    startingLon: -72.6412,
-    startingZoom: 13
+    startingLat: 35,
+    startingLon: -83,
+    startingZoom: 5
   };
 
   // Set up starting state - this is a dictionary into which we can put

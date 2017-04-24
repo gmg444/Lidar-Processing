@@ -82,18 +82,22 @@ class JobManager():
             utils.save_clip_poly(wkt, clip_poly)
 
             self.update_status("mosaicking tiles")
-            utils.mosaic_tiles(self.work_path + "*_dsm.tif", self.work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy, clip_poly)
-            utils.mosaic_tiles(self.work_path + "*_height.tif", self.work_path + "mosaic_height.tif", minx, miny, maxx, maxy, clip_poly)
+            utils.mosaic_tiles(self.work_path + "*_dsm.tif", self.work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy,
+                               clip_poly, self.job_id)
+            utils.mosaic_tiles(self.work_path + "*_height.tif", self.work_path + "mosaic_height.tif", minx, miny, maxx,
+                               maxy, clip_poly, self.job_id)
             # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy, clip_poly)
-            utils.mosaic_tiles(self.work_path + "*_dem.tif", self.work_path + "mosaic_dem.tif", minx, miny, maxx, maxy, clip_poly)
+            utils.mosaic_tiles(self.work_path + "*_dem.tif", self.work_path + "mosaic_dem.tif", minx, miny, maxx, maxy,
+                               clip_poly, self.job_id)
 
+            self.update_status("finalizing output")
             tree_file = self.work_path + "mosaic_trees.shp"
             utils.merge_tiles(self.work_path + "*_trees.shp", tree_file, clip_poly)
             utils.finalize(tree_file, clip_poly, self.job_id)
 
             bldgs_file = self.work_path + "mosaic_bldgs.shp"
             utils.merge_tiles(self.work_path + "*_bldgs.shp", bldgs_file, clip_poly, 10)
-            utils.finalize(bldgs_file, clip_poly)
+            utils.finalize(bldgs_file, clip_poly, self.job_id)
 
             # impervious_file = self.work_path + "mosaic_impervious.shp"
             # utils.merge_tiles(self.work_path + "*_impervious.shp", impervious_file, clip_poly, 10)
@@ -102,7 +106,7 @@ class JobManager():
             contours_file = self.work_path + "mosaic_contours.shp"
             utils.contours(self.work_path + "mosaic_dem.tif", contours_file, clip_poly)
             utils.finalize(contours_file, clip_poly, self.job_id)
-
+            self.update_status("job complete!")
             # utils.mosaic_tiles(self.work_path + "*_trees.tif", self.work_path + "mosaic_trees.tif", minx, miny, maxx, maxy)
             # self.update_status("generating map tiles")
             # utils.create_output_tiles(self.work_path + "mosaic_dsm.tif", self.work_path + "dsm/")
@@ -110,7 +114,7 @@ class JobManager():
             # # utils.create_output_tiles(self.work_path + "mosaic_intensity.tif", self.work_path + "intensity/")
             # utils.create_output_tiles(self.work_path + "mosaic_dem.tif", self.work_path + "dem/")
             # # utils.create_output_tiles(self.work_path + "mosaic_trees.tif", self.work_path + "trees/")
-            self.update_status("job complete!")
+
         else:
             self.job_id = None
             self.log_message("No jobs found")
