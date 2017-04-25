@@ -27,11 +27,15 @@ lm.lmap =  new function () {
 
     // L is a global used by leaflet.  We can create the new leaflet map
     // by passing in the div id into which we want to display the map.
-    map = L.map('map');
-    map.setView([cfg.startingLat, cfg.startingLon], cfg.startingZoom);
     var mapLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}.png', {
         minZoom: 5, maxZoom: 19
     });
+    var imageLayer = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.png', {
+        minZoom: 5, maxZoom: 19
+    });
+    map = L.map('map');
+    map.setView([cfg.startingLat, cfg.startingLon], cfg.startingZoom);
+    L.control.layers({"Map": mapLayer, "Satellite": imageLayer}).addTo(map);
     mapLayer.addTo(map);
     // When the user clicks on the map, we want to take some action.
     map.on("click", function(e){

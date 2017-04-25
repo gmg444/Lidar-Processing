@@ -191,7 +191,7 @@ def save_clip_poly(wkt, clip_file):
 
 def contours(input_file, output_file, clip_poly):
     print ("Contours", input_file)
-    cmd = conf.gdal_dir + 'gdal_contour -a "elevation" -i 3.0 {0} {1}'.format(input_file, output_file)
+    cmd = conf.gdal_dir + 'gdal_contour -a "elevation" -i 1.0 {0} {1}'.format(input_file, output_file)
     exec_command_line(cmd)
     poly = gpd.GeoDataFrame.from_file(output_file)
     poly.crs = {'init': 'epsg:3857'}

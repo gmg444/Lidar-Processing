@@ -6,6 +6,8 @@ import config as conf
 import glob as gl
 import utils as ut
 import matplotlib.pyplot as plt
+from skimage import feature
+
 
 def make(dem_file, trees_arr, intensity_arr, dsm_arr, height_arr):
     # Apply gaussian filter to make dem and contours less jagged
@@ -31,6 +33,9 @@ def make(dem_file, trees_arr, intensity_arr, dsm_arr, height_arr):
     # other_array = ndi.binary_dilation(other_array, iterations=2)
     # buildings_arr *= np.invert(other_array)
     buildings_arr = ndi.binary_dilation(buildings_arr, iterations=2)
+    buildings_arr = feature.canny(buildings_arr, sigma=1)
+    buildings_arr = ndi.binary_dilation(buildings_arr, iterations=2)
+    buildings_arr = ndi.binary_fill_holes(buildings_arr)
 
     # Save buildings tiff
     dest_file = dem_file.replace("_dem.tif", "_bldgs.tif")
@@ -47,6 +52,7 @@ def make(dem_file, trees_arr, intensity_arr, dsm_arr, height_arr):
     # Convert to shape file
     in_shp = ut.make_polygon(dest_file, dest_file.replace(".tif", ".shp"), "buildings")
     ut.dissolve_polygon(in_shp, in_shp, 10)
+
 
     # # Detect impervious surface
     # impervious_arr = np.ones(buildings_arr.shape)
