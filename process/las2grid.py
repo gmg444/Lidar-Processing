@@ -39,20 +39,28 @@ def generate_grids(input_file):
 
     # Projection from https://gist.github.com/springmeyer/871897, vectorized with numpy
     if conf.is_amherst:
-        x = X/3.28084
-        y = Y/3.28084
+        x = X
+        y = Y
     else:
         x = (X * 20037508.34 / 180.0)
         y = (np.log(np.tan((90.0 + Y) * math.pi / 360.0)) / (math.pi / 180.0) * 20037508.34 / 180.0)
+
     z = (f.Z * f.header.scale[2])
+    arr_filter = (z < np.percentile(z, 98))
+    x_min = x.min()
+    y_min = y.min()
+    x = x - x.min()
+    y = y - y.min()
+    if conf.is_amherst:
+        x /= 3.28084
+        y /= 3.28084
 
     # Create int array for indexing grid x, y
     x_int = np.floor(x + 0.5).astype(np.int32)
     y_int = np.floor(y + 0.5).astype(np.int32)
-
-    # Convert to range starting with zero
-    x_int = x_int - x_int.min()
-    y_int = y_int - y_int.min()
+    x *= arr_filter
+    y *= arr_filter
+    z *= arr_filter
 
     # Create xyz numpy arrays from points array, where z is elevation, classification, intensity,
     # return number, and number of returns.
@@ -78,7 +86,7 @@ def generate_grids(input_file):
     arr[:, :] = no_data_value
     arr[existing_y, existing_x] = max_z.z.values
     dsm_file = input_file.replace(".las", "_dsm.tif")
-    new_file = steps.write_tiff_file(dsm_file, arr, x.min(), y.min(), no_data_value)
+    new_file = steps.write_tiff_file(dsm_file, arr, x_min, y_min, no_data_value)
     # tfs.tif_to_solar(dsm_file, dsm_file.replace(".tif", "_solar.tif"))
     dsm_arr = arr + 0
 
@@ -91,7 +99,7 @@ def generate_grids(input_file):
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = range_z.z.values
     height_tif = input_file.replace(".las", "_height.tif")
-    new_file = steps.write_tiff_file(height_tif, arr, x.min(), y.min(), no_data_value)
+    new_file = steps.write_tiff_file(height_tif, arr, x_min, y_min, no_data_value)
     range_z_arr = arr + 0
 
     trees_arr = tft.make_tree_shp(height_tif, height_tif.replace("_height.tif", "_trees.shp"))
@@ -110,14 +118,14 @@ def generate_grids(input_file):
     # Output classification
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = max_c.z.values
-    # new_file = steps.write_tiff_file(input_file.replace(".las", "_class.tif"), arr, x.min(), y.min(), no_data_value)
+    # new_file = steps.write_tiff_file(input_file.replace(".las", "_class.tif"), arr, x_min, y_min, no_data_value)
     class_arr = arr + 0
 
     ground_cells = ((class_arr == 2) * (range_z_arr == 0)).astype(np.int32)
     ground_arr = min_z_arr * ground_cells
     ground_arr[ground_arr <= 0] = -1
 
-    new_file = steps.write_tiff_file(input_file.replace(".las", "_dem_temp.tif"), ground_arr, x.min(), y.min(), no_data_value)
+    new_file = steps.write_tiff_file(input_file.replace(".las", "_dem_temp.tif"), ground_arr, x_min, y_min,  no_data_value)
     dem_file = new_file.replace("_dem_temp.tif", "_dem.tif")
     # -a argument required, with 0,0,0 - see http://gis.stackexchange.com/questions/143818/osgeo4w-and-gdal-gdal2tiles-py-error
     cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_fillnodata.py" -md 100 -b 1 -of GTiff {0} {1}'.format(new_file, dem_file)
@@ -136,7 +144,7 @@ def generate_grids(input_file):
     # # Expand back out tree
     # tree_cells = ndi.binary_dilation(tree_cells, structure=struct, iterations=2)
     # tree_arr = 1.0 * tree_cells
-    # new_file = steps.write_tiff_file(input_file.replace(".las", "_trees.tif"), tree_arr, x.min(), y.min(), no_data_value)
+    # new_file = steps.write_tiff_file(input_file.replace(".las", "_trees.tif"), tree_arr, x_min, y_min, no_data_value)
 
     # Clean up
     max_c = None
@@ -156,7 +164,6 @@ def generate_grids(input_file):
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = mean_i.z.values
     # new_file = steps.write_tiff_file(input_file.replace(".las", "_intensity.tif"), arr, x.min(), y.min(), no_data_value)
-
     tfterr.make(dem_file, trees_arr, arr, dsm_arr, range_z_arr)
 
     # Clean up

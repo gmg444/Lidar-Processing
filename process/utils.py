@@ -34,7 +34,12 @@ def write_tiff_file(dst_file, arr, x_min, y_min, no_data_value):
     band.WriteArray(arr)
     band.SetNoDataValue(no_data_value)
     proj = osr.SpatialReference()
-    proj.SetWellKnownGeogCS("EPSG:3857")
+    if conf.is_amherst:
+        # proj.SetWellKnownGeogCS("ESRI:102686")
+        proj.ImportFromWkt((
+                           'PROJCS["NAD_1983_StatePlane_Massachusetts_Mainland_FIPS_2001_Feet",GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Lambert_Conformal_Conic"],PARAMETER["False_Easting",656166.6666666665],PARAMETER["False_Northing",2460625.0],PARAMETER["Central_Meridian",-71.5],PARAMETER["Standard_Parallel_1",41.71666666666667],PARAMETER["Standard_Parallel_2",42.68333333333333],PARAMETER["Latitude_Of_Origin",41.0],UNIT["Foot_US",0.3048006096012192]],VERTCS["NAVD_1988",VDATUM["North_American_Vertical_Datum_1988"],PARAMETER["Vertical_Shift",0.0],PARAMETER["Direction",1.0],UNIT["Foot_US",0.3048006096012192]])'))
+    else:
+        proj.SetWellKnownGeogCS("EPSG:3857")
     ds.SetProjection(proj.ExportToWkt())
     geotrans = (x_min, 1, 0, y_min, 0, 1)
     # Set spatial reference and projection of output file to same as input file
@@ -86,18 +91,26 @@ def mosaic_tiles(wildcard_path, output_file, minx, miny, maxx, maxy, clip_poly, 
     print ("Mosaicking tiles", wildcard_path)
     input_files = []
     for f_name in gl.glob(wildcard_path):
-        # f_name_new = f_name.replace(".tif", "_3857.tif")
-        # add_srs_to_tiff(f_name, f_name_new, 3857)
+        # if conf.is_amherst:
+        #     f_name_new = f_name.replace(".tif", "_102686.tif")
+        #     add_srs_to_tiff(f_name, f_name_new, 102686)
+        #     f_name = f_name_new
         input_files.append(f_name)
     tile_str = " ".join(input_files)
     # No data is -1 here - to  handle no data correctly, use add this command line:  -n -1
     # Problem is, this requires gdal_array, which is not provided with current version. see:
     # https://github.com/conda-forge/gdal-feedstock/issues/131
-    temp_file = output_file.replace(".tif", "_temp.tif")
-    cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_merge.py" -ul_lr {0} {1} {2} {3} -a_nodata -1 -init -1 -n -1 -o {4} {5}'.format(minx, miny, maxx, maxy, temp_file, tile_str)
-    exec_command_line(cmd)
-    cmd = "gdalwarp -overwrite -s_srs EPSG:3857 -t_srs EPSG:3857 -r bilinear -dstnodata 0 -q -cutline {0} -dstalpha -of GTiff {1} {2}".format(clip_poly, temp_file, output_file)
-    exec_command_line(cmd)
+    if clip_poly:
+        temp_file = output_file.replace(".tif", "_temp.tif")
+        cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_merge.py" -ul_lr {0} {1} {2} {3} -a_nodata -1 -init -1 -n -1 -o {4} {5}'.format(
+            minx, miny, maxx, maxy, temp_file, tile_str)
+        exec_command_line(cmd)
+        cmd = "gdalwarp -overwrite -s_srs EPSG:3857 -t_srs EPSG:3857 -r bilinear -dstnodata 0 -q -cutline {0} -dstalpha -of GTiff {1} {2}".format(clip_poly, temp_file, output_file)
+        exec_command_line(cmd)
+    else:
+        cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_merge.py" -ul_lr {0} {1} {2} {3} -a_nodata -1 -init -1 -n -1 -o {4} {5}'.format(
+            minx, miny, maxx, maxy, output_file, tile_str)
+        exec_command_line(cmd)
     public_file = conf.output_path + str(job_id) + "_" + os.path.basename(output_file)
     cmd = "copy {0} {1}".format(output_file.replace("/", "\\"), public_file.replace("/", "\\"))
     exec_command_line(cmd, shell_flag=True)
@@ -154,16 +167,19 @@ def dissolve_polygon(infile, outfile):
 
 def merge_tiles(wildcard_path, output_file, clip_poly, remove_smaller_than=0):
     print ("Merge tiles", wildcard_path)
+    srs = "epsg:3857"
+    if conf.is_amherst:
+        srs = "epsg:102686"
     files = gl.glob(wildcard_path)
     layers = []
     for f in files:
         layers.append(gpd.read_file(f))
     poly = gpd.GeoDataFrame(pd.concat(layers, ignore_index=True))
-    poly.crs = {'init': 'epsg:3857'}
+    poly.crs = {'init': srs}
     poly.geometry = poly.geometry.buffer(5)
     dissolved = poly.dissolve(by='FID')
     dissolved.geometry = dissolved.geometry.buffer(-5)
-    dissolved.crs = {'init': 'epsg:3857'}
+    dissolved.crs = {'init': srs}
     dissolved = dissolved.to_crs({'init' :'epsg:4326'})
     # This is the main output shape file
     dissolved.to_file(output_file)
@@ -183,18 +199,24 @@ def dissolve_polygon(infile, outfile, remove_smaller_than=0):
     return outfile
 
 def save_clip_poly(wkt, clip_file):
+    srs = "epsg:3857"
+    if conf.is_amherst:
+        srs = "epsg:102686"
     print ("Get clip poly", wkt)
     pgon = loads(wkt)
     df = gpd.GeoDataFrame([{"Value": 1, "geometry": pgon}], index=[1])
-    df.crs = {'init' :'epsg:4326'}
+    df.crs = {'init': srs}
     df.to_file(clip_file)
 
 def contours(input_file, output_file, clip_poly):
+    srs = "epsg:3857"
+    if conf.is_amherst:
+        srs = "epsg:102686"
     print ("Contours", input_file)
     cmd = conf.gdal_dir + 'gdal_contour -a "elevation" -i 1.0 {0} {1}'.format(input_file, output_file)
     exec_command_line(cmd)
     poly = gpd.GeoDataFrame.from_file(output_file)
-    poly.crs = {'init': 'epsg:3857'}
+    poly.crs = {'init': srs}
     poly = poly.to_crs({'init' :'epsg:4326'})
     poly.to_file(output_file)  # , driver="GeoJSON")
 
@@ -219,7 +241,7 @@ def finalize(merged_file, clip_poly, job_id):
     exec_command_line(cmd)
     # Convert to simplified geojson.
     geo_json_file = merged_file.replace(".shp", ".json")
-    cmd = "ogr2ogr -f GeoJSON -simplify 0.00001 {0} {1}".format(geo_json_file, clipped_file)
+    cmd = "ogr2ogr -f GeoJSON -simplify 0.000001 {0} {1}".format(geo_json_file, clipped_file)
     exec_command_line(cmd)
     out_file = conf.output_path + str(job_id) + "_" + os.path.basename(geo_json_file)
     cmd = "copy {0} {1}".format(geo_json_file.replace("/", "\\"), out_file.replace("/", "\\"))

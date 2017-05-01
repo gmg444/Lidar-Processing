@@ -128,6 +128,7 @@ lm.lmap =  new function () {
       var color = "#A36";
       var fillColor = "#3A6"
       var width = 1;
+      var opacity = 0.7;
       if (layerType == "bldgs"){
         color = "#36A";
         fillColor = "#A63"
@@ -135,6 +136,7 @@ lm.lmap =  new function () {
       if (layerType == "contours"){
         color = "#A36";
         width = 2;
+        opacity = 0.4;
       }
       $.getJSON(url,function(data){
         // add GeoJSON layer to the map once the file is loaded
@@ -144,7 +146,7 @@ lm.lmap =  new function () {
              "fillColor": fillColor,
              "weight": width,
              "fillOpacity": 0.8,
-             "opacity": 0.7
+             "opacity": opacity
            }
          });
         currentSelectedLayer.addTo(map);

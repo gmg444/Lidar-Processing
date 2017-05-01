@@ -8,6 +8,7 @@ import database as db
 from multiprocessing import Pool
 import tif2tree as tft
 import tif2terrain as tfterr
+import json
 
 def process_tiles(tiles):
     # Downloads and grids tiles
@@ -121,21 +122,12 @@ class JobManager():
 
     def get_tiles_to_process(self):
         results = []
-        if conf.is_amherst:
-            index = 0
-            with open(r"C:\Projects\lidar-data\amherst_tiles.txt") as f:
-                lines = f.readlines()
-                for line in lines:
-                    index += 1
-                    d = { "id": index, "url": line.replace("\n", ""), "path": self.work_path }
-                    results.append(d)
-        else:
-            # Get tiles associated with the given job
-            sql = "select tile_id, url from job_tile a inner join tile_index b on a.tile_id = b.gid where a.job_id = %s"
-            t = db.get_rows(sql, [self.job_id])
-            results = []
-            for d in t:
-                results.append({"id": d[0], "url": d[1].replace("\n", ""), "path": self.work_path })
+        # Get tiles associated with the given job
+        sql = "select tile_id, url from job_tile a inner join tile_index b on a.tile_id = b.gid where a.job_id = %s"
+        t = db.get_rows(sql, [self.job_id])
+        results = []
+        for d in t:
+            results.append({"id": d[0], "url": d[1].replace("\n", ""), "path": self.work_path })
         return results
 
     def get_bounds(self):
@@ -168,4 +160,57 @@ class JobManager():
     def complete_job(self, town_id, map_url):
         sql = "update job set status = 2 where job_id = %s"
         db.exec_sql(sql, [self.job_id])
+
+if __name__ == "__main__":
+    job_id = 1000
+    with open(r"D:/lidar-maps-data/amherst/amherst_tiles.geojson") as f:
+        data = f.readlines()
+        d = json.loads("".join(data))
+        index = 1
+        work_path = "D:/lidar-maps-data/amherst/"
+        tile_list = []
+        minx = 99999999
+        maxx = -99999999
+        miny = 99999999
+        maxy = -99999999
+        for f in d["features"]:
+            id = f["properties"]["Tile"]
+            url = "http://gis.amherstma.gov/data/2009/lidar/LAS/AllPts/LAZ/AllPts_{0}.laz".format(id)
+            item = {"id": index, "url": url, "path": work_path}
+            bbox = [float(x) for x in f["bbox"]]
+            if bbox[0] < minx:
+                minx = bbox[0]
+            if bbox[1] < miny:
+                miny = bbox[1]
+            if bbox[2] > maxx:
+                maxx = bbox[2]
+            if bbox[3] > maxy:
+                maxy = bbox[3]
+            tile_list.append(item)
+            index += 1
+    process_tiles(tile_list)
+    # utils.mosaic_tiles(work_path + "*_dsm.tif", work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy,
+    #                    None, job_id)
+    # utils.mosaic_tiles(work_path + "*_height.tif", work_path + "mosaic_height.tif", minx, miny, maxx,
+    #                    maxy, None, job_id)
+    # # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy, clip_poly)
+    # utils.mosaic_tiles(work_path + "*_dem.tif", work_path + "mosaic_dem.tif", minx, miny, maxx, maxy,
+    #                    None, job_id)
+
+    tree_file = work_path + "mosaic_trees.shp"
+    utils.merge_tiles(work_path + "*_trees.shp", tree_file, None)
+    utils.finalize(tree_file, None, job_id)
+
+    bldgs_file = work_path + "mosaic_bldgs.shp"
+    utils.merge_tiles(work_path + "*_bldgs.shp", bldgs_file, None, 10)
+    utils.finalize(bldgs_file, None, job_id)
+
+    # impervious_file = self.work_path + "mosaic_impervious.shp"
+    # utils.merge_tiles(self.work_path + "*_impervious.shp", impervious_file, clip_poly, 10)
+    # utils.finalize(impervious_file, clip_poly, self.job_id)
+
+    contours_file = work_path + "mosaic_contours.shp"
+    utils.contours(work_path + "mosaic_dem.tif", contours_file, None)
+    utils.finalize(contours_file, None, job_id)
+    print("job complete!")
 
