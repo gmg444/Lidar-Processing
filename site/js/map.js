@@ -39,9 +39,15 @@ lm.lmap =  new function () {
     mapLayer.addTo(map);
     // When the user clicks on the map, we want to take some action.
     map.on("click", function(e){
-      if (selectMode && !drawingNow){
+      if (!drawingNow){
+        if(selectMode){
           $.get( that.ajaxUrl + "/town_data?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng, displayTownData, dataType="json");
-      }
+        }
+        else if (e.shiftKey) {
+          $("#lm-modal-dialog .modal-title").html("Detail view");
+          $("#lm-modal-dialog").modal();
+          lm.displayPointCloud();
+        }
     });
 
     $("#lm-available-layers input:radio").on("change", selectLayer);

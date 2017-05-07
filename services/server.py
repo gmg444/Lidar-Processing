@@ -160,4 +160,5 @@ if __name__ == '__main__':
     #                    'tools.encode.encoding': 'utf-8',
     #                    'server.socket_port': conf.port})
     # CherryPy creates an instance of the server object, then spins up multiple threads to access that server.
+    cherrypy.config.update({'server.socket_port': 80, })
     cherrypy.quickstart(Server())

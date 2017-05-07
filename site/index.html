@@ -8,12 +8,15 @@
 		<link rel="stylesheet" href="lib/bootstrap/css/bootstrap.min.css">
 		<link rel="stylesheet" href="lib/bootstrap/css/bootstrap-theme.min.css">
 		<link rel="stylesheet" href="lib/font-awesome-4.7.0/css/font-awesome.min.css">
+		<script src="lib/three.min.js"></script>
+		<script src="lib/OrbitControls.js"></script>
 		<script src="lib/jquery-3.1.1.min.js"></script>
 		<script src="lib/bootstrap/js/bootstrap.min.js"></script>
 		<script src="lib/leaflet/leaflet.js"></script>
 	  <script src="lib/leaflet-draw/leaflet.draw.js"></script>
 		<script src="js/coverage.json"></script>
 		<script src="js/lm.js"></script>
+		<script src="js/pointcloud.js"></script>
 		<script src="js/map.js"></script>
 </head>
 
@@ -113,6 +116,22 @@
 					  generate a new set of map layers, select "generate new" from the list,
 					 and select a town within the shaded area by clicking, or draw a polygon
 				 using the drawing tools in the upper left of the map.</p>
+	      </div>
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-primary btn-default"
+						data-dismiss="modal">Close</button>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+	<div id="lm-modal-pointcloud" class="modal fade" role="dialog">
+	  <div class="modal-dialog">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal">&times;</button>
+	        <h4 class="modal-title">Point Cloud Viewer</h4>
+	      </div>
+	      <div class="lm-pointcloud-viewer">
 	      </div>
 	      <div class="modal-footer">
 	        <button type="button" class="btn btn-primary btn-default"

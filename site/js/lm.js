@@ -15,7 +15,7 @@ $(document).ready(function(){
   // after the site is up and running here, so we don't have to go fishing through.
   // the code to make changes.
   var config = {
-    ajaxUrl: "http://localhost:8080/",
+    ajaxUrl: "http://50.19.80.129/",
     startingLat: 35,
     startingLon: -83,
     startingZoom: 5
