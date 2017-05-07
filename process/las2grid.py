@@ -46,7 +46,7 @@ def generate_grids(input_file):
         y = (np.log(np.tan((90.0 + Y) * math.pi / 360.0)) / (math.pi / 180.0) * 20037508.34 / 180.0)
 
     z = (f.Z * f.header.scale[2])
-    arr_filter = (z < np.percentile(z, 98))
+    arr_filter = (z < np.percentile(z, 98)) * (z > np.percentile(z, 2))
     x_min = x.min()
     y_min = y.min()
     x = x - x.min()
@@ -54,6 +54,7 @@ def generate_grids(input_file):
     if conf.is_amherst:
         x /= 3.28084
         y /= 3.28084
+        z /= 3.28084
 
     # Create int array for indexing grid x, y
     x_int = np.floor(x + 0.5).astype(np.int32)
@@ -85,8 +86,13 @@ def generate_grids(input_file):
     # Output max z
     arr[:, :] = no_data_value
     arr[existing_y, existing_x] = max_z.z.values
-    dsm_file = input_file.replace(".las", "_dsm.tif")
+    dsm_file = input_file.replace(".las", "_dsm_temp.tif")
     new_file = steps.write_tiff_file(dsm_file, arr, x_min, y_min, no_data_value)
+    dsm_file = new_file.replace("_dsm_temp.tif", "_dsm.tif")
+    # -a argument required, with 0,0,0 - see http://gis.stackexchange.com/questions/143818/osgeo4w-and-gdal-gdal2tiles-py-error
+    cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_fillnodata.py" -md 100 -b 1 -of GTiff {0} {1}'.format(new_file, dsm_file)
+    utils.exec_command_line(cmd)
+
     # tfs.tif_to_solar(dsm_file, dsm_file.replace(".tif", "_solar.tif"))
     dsm_arr = arr + 0
 
@@ -98,14 +104,10 @@ def generate_grids(input_file):
     # Output range z
     arr[:,:] = no_data_value
     arr[existing_y, existing_x] = range_z.z.values
-    height_tif = input_file.replace(".las", "_height.tif")
-    new_file = steps.write_tiff_file(height_tif, arr, x_min, y_min, no_data_value)
     range_z_arr = arr + 0
 
-    trees_arr = tft.make_tree_shp(height_tif, height_tif.replace("_height.tif", "_trees.shp"))
-
     # Clean up - seems to help reduce memory usage a bit
-    max_z = None
+    # max_z = None
     min_z = None
     range_z = None
     df = None
@@ -130,6 +132,14 @@ def generate_grids(input_file):
     # -a argument required, with 0,0,0 - see http://gis.stackexchange.com/questions/143818/osgeo4w-and-gdal-gdal2tiles-py-error
     cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_fillnodata.py" -md 100 -b 1 -of GTiff {0} {1}'.format(new_file, dem_file)
     utils.exec_command_line(cmd)
+
+    range_z_arr = None
+    dem_arr = utils.tif2numpy(dem_file)
+    dsm_arr = utils.tif2numpy(dsm_file)
+    range_z_arr = dsm_arr - dem_arr
+    height_tif = input_file.replace(".las", "_height.tif")
+    new_file = steps.write_tiff_file(height_tif, range_z_arr, x_min, y_min, no_data_value)
+    trees_arr = tft.make_tree_shp(height_tif, height_tif.replace("_height.tif", "_trees.shp"))
 
     # buildings_cells = (class_arr == 1).astype(np.int32)
     # struct = ndi.generate_binary_structure(2, 1)
@@ -166,7 +176,17 @@ def generate_grids(input_file):
     # new_file = steps.write_tiff_file(input_file.replace(".las", "_intensity.tif"), arr, x.min(), y.min(), no_data_value)
     tfterr.make(dem_file, trees_arr, arr, dsm_arr, range_z_arr)
 
+    with open(input_file.replace(".las", ".txt"), "w") as f:
+        mz = dsm_arr[dsm_arr > 1].min()
+        for r in range(dsm_arr.shape[0]):
+            for c in range(dsm_arr.shape[1]):
+                if dsm_arr[r, c] > 1:
+                    f.write("{0} {1} {2:.2f} {3:.2f}\n".format(c - float(dsm_arr.shape[1])/2.0, r - float(dsm_arr.shape[0])/2.0, dsm_arr[r, c] - mz, arr[r, c]))
+
     # Clean up
+    arr = None
+    dsm_arr = None
+    dem_arr = None
     max_i = None
 
 # For debugging - you can display gridded numpy arrays in matplotlib:
@@ -176,4 +196,11 @@ def generate_grids(input_file):
 
 if __name__ == "__main__":
     # Single test file:
-    output_files = generate_grids("C:/Projects/lidar-data/test_file/20150429_QL1_18TXM690689_SW_1.las")
+    # output_files = generate_grids("C:/Projects/lidar-data/test_file/20150429_QL1_18TXM690689_SW_1.las")
+    dsm_arr = utils.tif2numpy("D:/lidar-maps-data/amherst/AllPts_A9_dsm.tif")
+    with open('D:/lidar-maps-data/test_point_cloud.txt', "w") as f:
+        for r in range(dsm_arr.shape[0]):
+            for c in range(dsm_arr.shape[1]):
+                f.write("{0} {1} {2}\n".format(c - float(dsm_arr.shape[1])/2.0, r - float(dsm_arr.shape[0])/2.0, dsm_arr[r, c]))
+    print "all done"
+    # np.savetxt('D:/lidar-maps-data/test_point_cloud.txt', dsm_arr, delimiter=' ', newline='\n')

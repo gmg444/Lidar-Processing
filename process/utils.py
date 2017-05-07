@@ -24,6 +24,13 @@ def download_file(url, file_name):
 
 gdal.AllRegister()
 
+def tif2numpy(infile):
+    ds = gdal.Open(infile)
+    #Assign variables to information needed tp create output
+    band = ds.GetRasterBand(1)
+    myarray = band.ReadAsArray()
+    return myarray
+
 def write_tiff_file(dst_file, arr, x_min, y_min, no_data_value):
     print ("Writing tiff file", dst_file)
     driver = gdal.GetDriverByName('GTiff')
@@ -38,10 +45,11 @@ def write_tiff_file(dst_file, arr, x_min, y_min, no_data_value):
         # proj.SetWellKnownGeogCS("ESRI:102686")
         proj.ImportFromWkt((
                            'PROJCS["NAD_1983_StatePlane_Massachusetts_Mainland_FIPS_2001_Feet",GEOGCS["GCS_North_American_1983",DATUM["D_North_American_1983",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Lambert_Conformal_Conic"],PARAMETER["False_Easting",656166.6666666665],PARAMETER["False_Northing",2460625.0],PARAMETER["Central_Meridian",-71.5],PARAMETER["Standard_Parallel_1",41.71666666666667],PARAMETER["Standard_Parallel_2",42.68333333333333],PARAMETER["Latitude_Of_Origin",41.0],UNIT["Foot_US",0.3048006096012192]],VERTCS["NAVD_1988",VDATUM["North_American_Vertical_Datum_1988"],PARAMETER["Vertical_Shift",0.0],PARAMETER["Direction",1.0],UNIT["Foot_US",0.3048006096012192]])'))
+        geotrans = (x_min, 3.28084, 0, y_min, 0, 3.28084)
     else:
         proj.SetWellKnownGeogCS("EPSG:3857")
+        geotrans = (x_min, 1, 0, y_min, 0, 1)
     ds.SetProjection(proj.ExportToWkt())
-    geotrans = (x_min, 1, 0, y_min, 0, 1)
     # Set spatial reference and projection of output file to same as input file
     ds.SetGeoTransform(geotrans)
     ds.FlushCache()
@@ -179,8 +187,9 @@ def merge_tiles(wildcard_path, output_file, clip_poly, remove_smaller_than=0):
     poly.geometry = poly.geometry.buffer(5)
     dissolved = poly.dissolve(by='FID')
     dissolved.geometry = dissolved.geometry.buffer(-5)
-    dissolved.crs = {'init': srs}
-    dissolved = dissolved.to_crs({'init' :'epsg:4326'})
+    if not conf.is_amherst:
+        dissolved.crs = {'init': srs}
+        dissolved = dissolved.to_crs({'init' :'epsg:4326'})
     # This is the main output shape file
     dissolved.to_file(output_file)
 
@@ -241,7 +250,11 @@ def finalize(merged_file, clip_poly, job_id):
     exec_command_line(cmd)
     # Convert to simplified geojson.
     geo_json_file = merged_file.replace(".shp", ".json")
-    cmd = "ogr2ogr -f GeoJSON -simplify 0.000001 {0} {1}".format(geo_json_file, clipped_file)
+    simplify_param = 0.000001
+    if conf.is_amherst:
+        simplify_param = 0.1
+
+    cmd = "ogr2ogr -f GeoJSON -simplify " + str(simplify_param) + " {0} {1}".format(geo_json_file, clipped_file)
     exec_command_line(cmd)
     out_file = conf.output_path + str(job_id) + "_" + os.path.basename(geo_json_file)
     cmd = "copy {0} {1}".format(geo_json_file.replace("/", "\\"), out_file.replace("/", "\\"))
