@@ -43,11 +43,12 @@ lm.lmap =  new function () {
         if(selectMode){
           $.get( that.ajaxUrl + "/town_data?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng, displayTownData, dataType="json");
         }
-        else if (e.shiftKey) {
-          $("#lm-modal-dialog .modal-title").html("Detail view");
-          $("#lm-modal-dialog").modal();
+        else if (map.getZoom()>10) {
+          $("#lm-modal-pointcloud .modal-title").html("Detail view");
+          $("#lm-modal-pointcloud").modal();
           lm.displayPointCloud();
         }
+	  }
     });
 
     $("#lm-available-layers input:radio").on("change", selectLayer);

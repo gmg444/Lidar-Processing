@@ -4,4 +4,4 @@ db = {
     "user": "postgres",
     "password": "quagga"
 }
-port = 8080
+port = 80

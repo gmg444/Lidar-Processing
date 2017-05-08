@@ -6,14 +6,14 @@ lm.displayPointCloud = function(){// Set up the scene, camera, and renderer as g
 
       // Create the scene and set the scene size.
     scene = new THREE.Scene();
-    var WIDTH = window.innerWidth,
-          HEIGHT = window.innerHeight;
+    var WIDTH = 800, HEIGHT = 600;
 
       // Create a renderer and add it to the DOM.
     renderer = new THREE.WebGLRenderer({antialias:true});
     renderer.setSize(WIDTH, HEIGHT);
     renderer.ShadowMapEnabled = true;
-    document.body.appendChild(renderer.domElement);
+	var container = document.getElementById("lm-pointcloud-viewer");
+    container.appendChild(renderer.domElement);
 
     // More code goes here next...
     // Create a camera, zoom it out from the model a bit, and add it to the scene.
@@ -29,13 +29,13 @@ lm.displayPointCloud = function(){// Set up the scene, camera, and renderer as g
     this.perspective = "Orthographic";
 	  scene.add(camera);
     // Create an event listener that resizes the renderer with the browser window.
-    window.addEventListener('resize', function() {
-        var WIDTH = window.innerWidth,
-            HEIGHT = window.innerHeight;
-        renderer.setSize(WIDTH*5, HEIGHT*5);
-        camera.aspect = WIDTH / HEIGHT;
-        camera.updateProjectionMatrix();
-    });
+    //window.addEventListener('resize', function() {
+    //    var WIDTH = window.innerWidth,
+    //         HEIGHT = window.innerHeight;
+    //    renderer.setSize(WIDTH*5, HEIGHT*5);
+    //    camera.aspect = WIDTH / HEIGHT;
+    //    camera.updateProjectionMatrix();
+    //});
 
     // Set the background color of the scene.
     //renderer.setClearColorHex(0x333F47, 1);
