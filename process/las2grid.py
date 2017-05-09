@@ -14,7 +14,8 @@ import tif2tree as tft
 import tif2terrain as tfterr
 import scipy.ndimage as ndi
 import utils
-
+import glob as gl
+import os
 """"
 Be sure laspy folder is in the current directory
 
@@ -197,10 +198,13 @@ def generate_grids(input_file):
 if __name__ == "__main__":
     # Single test file:
     # output_files = generate_grids("C:/Projects/lidar-data/test_file/20150429_QL1_18TXM690689_SW_1.las")
-    dsm_arr = utils.tif2numpy("D:/lidar-maps-data/amherst/AllPts_A9_dsm.tif")
-    with open('D:/lidar-maps-data/test_point_cloud.txt', "w") as f:
-        for r in range(dsm_arr.shape[0]):
-            for c in range(dsm_arr.shape[1]):
-                f.write("{0} {1} {2}\n".format(c - float(dsm_arr.shape[1])/2.0, r - float(dsm_arr.shape[0])/2.0, dsm_arr[r, c]))
+    # fnames = ["170_mosaic_dsm.tif", "168_mosaic_dsm.tif", "161_mosaic_dsm.tif", "154_mosaic_dsm.tif", "151_mosaic_dsm.tif"]
+    dir_name = "C:/Projects/LIDAR-PROCESSING/Lidar-Processing/site/output/"
+    for file_name in gl.glob("D:/lidar-maps-data/amherst/*dsm.tif"):
+        dsm_arr = utils.tif2numpy(file_name)
+        with open(dir_name + "1000_" + os.path.basename(file_name).replace(".tif", ".txt"), "w") as f:
+            for r in range(dsm_arr.shape[0]):
+                for c in range(dsm_arr.shape[1]):
+                    f.write("{0} {1} {2}\n".format(c - float(dsm_arr.shape[1])/2.0, r - float(dsm_arr.shape[0])/2.0, dsm_arr[r, c]))
     print "all done"
     # np.savetxt('D:/lidar-maps-data/test_point_cloud.txt', dsm_arr, delimiter=' ', newline='\n')

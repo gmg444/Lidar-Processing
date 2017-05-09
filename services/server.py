@@ -3,6 +3,7 @@ import json
 import batch_process as bp
 import map_tiles as mt
 import traceback as tb
+import os
 
 class Server(object):
 
@@ -100,6 +101,24 @@ class Server(object):
     # Other endpoints as needed - don't put too much here so this file doesn't get
     # too huge - most of the work can be done in external modules.
     # --------------------------------------------------------------------------------
+    @cherrypy.expose
+    def point_cloud_url (self, lat,lon):
+        # Example endpoint, accessible via:
+        # http://localhost:8080/example?lat=42.442302&lon=-73.0788755
+        try:
+            result = self.get_response_wrapper()
+            result["data"]['coords'] = [lat, lon]
+            job_id, url = mt.fetch_tile_name(lat, lon)
+            fname = os.path.basename(url)
+            result["data"]['url'] = "output/" + str(job_id) + "_" + fname
+            return self.encode_results(result)
+
+        except Exception as e:
+            result["status"] = 500
+            result["message"] = "{0} {1}".format(e, tb.format_exc())
+
+        return self.encode_results(result)
+
     @cherrypy.expose
     def tiles_at_coords (self, lat,lon):
         # Example endpoint, accessible via:

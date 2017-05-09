@@ -1,4 +1,4 @@
-lm.displayPointCloud = function(){// Set up the scene, camera, and renderer as global variables.
+lm.displayPointCloud = function(url){// Set up the scene, camera, and renderer as global variables.
   var scene, camera, renderer;
 
   // Sets up the scene.
@@ -123,7 +123,7 @@ var processData = function(data){
 
   $.ajax({
          type: "GET",
-         url: "test_point_cloud.txt",
+         url: url,
          dataType: "text",
          success: function(data) {processData(data);}
       });

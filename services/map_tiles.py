@@ -51,6 +51,29 @@ def get_town_data(lat, lon):
     cnxn.close()
     return result
 
+def fetch_tile_name(lat, lon):
+    cnxn = None
+    try:
+        cnxn = pg.connect(host=conf.db["host"], database=conf.db["database"], user=conf.db["user"], password=conf.db["password"])
+        cursor = cnxn.cursor()
+        # find the tiles that are within the town corresponding to the coordinate
+        sql = """ SELECT job_id, url
+                  FROM  tile_index a inner join job_tile b on a.gid = b.tile_id
+                  WHERE ST_Within(st_geomfromtext('POINT({0} {1})',4326), geom)""".format(lon, lat)
+        cursor.execute(sql)
+
+        # return the tile indices
+        result = ()
+        for row in cursor.fetchone():
+            result = (row[0], row[1])
+        cursor.close()
+        return result
+    except (Exception, pg.DatabaseError) as error:
+        return error
+    finally:
+        if cnxn is not None:
+            cnxn.close()
+
 def fetch_tile_list(lat, lon):
     cnxn = None
     try:

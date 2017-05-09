@@ -40,13 +40,15 @@ lm.lmap =  new function () {
     // When the user clicks on the map, we want to take some action.
     map.on("click", function(e){
       if (!drawingNow){
-        if(selectMode){
+        if(false){
           $.get( that.ajaxUrl + "/town_data?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng, displayTownData, dataType="json");
         }
         else if (map.getZoom()>10) {
-          $("#lm-modal-pointcloud .modal-title").html("Detail view");
-          $("#lm-modal-pointcloud").modal();
-          lm.displayPointCloud();
+          $.get( that.ajaxUrl + "/point_cloud_url?lat=" + e.latlng.lat + "&lon=" + e.latlng.lng, function(url){
+            $("#lm-modal-pointcloud .modal-title").html("Detail view");
+            $("#lm-modal-pointcloud").modal();
+            lm.displayPointCloud(url["data"]['url']);
+          }, dataType="json");
         }
 	  }
     });

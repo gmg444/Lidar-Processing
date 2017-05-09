@@ -107,6 +107,12 @@ class JobManager():
             contours_file = self.work_path + "mosaic_contours.shp"
             utils.contours(self.work_path + "mosaic_dem.tif", contours_file, clip_poly)
             utils.finalize(contours_file, clip_poly, self.job_id)
+
+            for f_name in gl.glob(self.work_path + "*.txt"):
+                out_file = conf.output_path + str(job_id) + "_" + os.path.basename(f_name)
+                cmd = "copy {0} {1}".format(f_name.replace("/", "\\"), out_file.replace("/", "\\"))
+                utils.exec_command_line(cmd, shell_flag=True)
+
             self.update_status("job complete!")
             # utils.mosaic_tiles(self.work_path + "*_trees.tif", self.work_path + "mosaic_trees.tif", minx, miny, maxx, maxy)
             # self.update_status("generating map tiles")
@@ -189,13 +195,13 @@ if __name__ == "__main__":
             tile_list.append(item)
             index += 1
     process_tiles(tile_list)
-    # utils.mosaic_tiles(work_path + "*_dsm.tif", work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy,
-    #                    None, job_id)
-    # utils.mosaic_tiles(work_path + "*_height.tif", work_path + "mosaic_height.tif", minx, miny, maxx,
-    #                    maxy, None, job_id)
-    # # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy, clip_poly)
-    # utils.mosaic_tiles(work_path + "*_dem.tif", work_path + "mosaic_dem.tif", minx, miny, maxx, maxy,
-    #                    None, job_id)
+    utils.mosaic_tiles(work_path + "*_dsm.tif", work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy,
+                       None, job_id)
+    utils.mosaic_tiles(work_path + "*_height.tif", work_path + "mosaic_height.tif", minx, miny, maxx,
+                       maxy, None, job_id)
+    # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy, clip_poly)
+    utils.mosaic_tiles(work_path + "*_dem.tif", work_path + "mosaic_dem.tif", minx, miny, maxx, maxy,
+                       None, job_id)
 
     tree_file = work_path + "mosaic_trees.shp"
     utils.merge_tiles(work_path + "*_trees.shp", tree_file, None)
@@ -213,4 +219,3 @@ if __name__ == "__main__":
     utils.contours(work_path + "mosaic_dem.tif", contours_file, None)
     utils.finalize(contours_file, None, job_id)
     print("job complete!")
-

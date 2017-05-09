@@ -224,10 +224,13 @@ def contours(input_file, output_file, clip_poly):
     print ("Contours", input_file)
     cmd = conf.gdal_dir + 'gdal_contour -a "elevation" -i 1.0 {0} {1}'.format(input_file, output_file)
     exec_command_line(cmd)
-    poly = gpd.GeoDataFrame.from_file(output_file)
-    poly.crs = {'init': srs}
-    poly = poly.to_crs({'init' :'epsg:4326'})
-    poly.to_file(output_file)  # , driver="GeoJSON")
+    try:
+        poly = gpd.GeoDataFrame.from_file(output_file)
+        poly.crs = {'init': srs}
+        poly = poly.to_crs({'init' :'epsg:4326'})
+        poly.to_file(output_file)  # , driver="GeoJSON")
+    except Exception as e:
+        print ("Exception processing tile {0}: {1}".format(input_file, output_file))
 
 def save_to_shp(poly, out_file):
     print ("Save to shp")
