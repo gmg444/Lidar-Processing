@@ -13,6 +13,7 @@ lm.displayPointCloud = function(url){// Set up the scene, camera, and renderer a
     renderer.setSize(WIDTH, HEIGHT);
     renderer.ShadowMapEnabled = true;
 	var container = document.getElementById("lm-pointcloud-viewer");
+	container.html("");
     container.appendChild(renderer.domElement);
 
     // More code goes here next...
@@ -63,8 +64,11 @@ lm.displayPointCloud = function(url){// Set up the scene, camera, and renderer a
     var maxInt = -99999;
     for (i = 0; i < lines.length; i++) {
       var ln = lines[i].split(" ");
-        var intensity = parseFloat(ln[3]);
         var z = parseFloat(ln[2]);
+        var intensity = z;
+        if (ln.length >3){
+          intensity = parseFloat(ln[3]);
+        }
         if ((intensity > 0) && (z > 1)){
           var vertex = new THREE.Vector3();
           vertex.x = parseFloat(ln[0]);

@@ -63,11 +63,11 @@ def fetch_tile_name(lat, lon):
         cursor.execute(sql)
 
         # return the tile indices
-        result = ()
-        for row in cursor.fetchone():
-            result = (row[0], row[1])
+        job_id, url = 0, ""
+        row = cursor.fetchone()
+        job_id, url = row[0], row[1]
         cursor.close()
-        return result
+        return job_id, url
     except (Exception, pg.DatabaseError) as error:
         return error
     finally:

@@ -110,7 +110,7 @@ class Server(object):
             result["data"]['coords'] = [lat, lon]
             job_id, url = mt.fetch_tile_name(lat, lon)
             fname = os.path.basename(url)
-            result["data"]['url'] = "output/" + str(job_id) + "_" + fname
+            result["data"]['url'] = ("output/" + str(job_id) + "_" + fname).strip().replace(".laz", ".txt")
             return self.encode_results(result)
 
         except Exception as e:
