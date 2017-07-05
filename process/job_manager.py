@@ -24,7 +24,7 @@ def process_tiles(tiles):
                 # jm.update_tile_status(id, "converting to las")
                 cur_file = utils.convert_to_las(cur_file, work_path)
             #jm.update_tile_status(id, "generating grids")
-            lg.generate_grids(cur_file)
+            t["tree_pct"], t["tree_area"], t["all_area"] = lg.generate_grids(cur_file)
         except Exception as e:
             print ("Exception processing tile {0}: {1}".format(str(t['id']), str(e)))
             # log_message("Exception processing tile {0}: {1}".format(str(t['id']), str(e)))
@@ -82,31 +82,31 @@ class JobManager():
             clip_poly = self.work_path + "clip_poly.shp"
             utils.save_clip_poly(wkt, clip_poly)
 
-            self.update_status("mosaicking tiles")
-            utils.mosaic_tiles(self.work_path + "*_dsm.tif", self.work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy,
-                               clip_poly, self.job_id)
-            utils.mosaic_tiles(self.work_path + "*_height.tif", self.work_path + "mosaic_height.tif", minx, miny, maxx,
-                               maxy, clip_poly, self.job_id)
-            # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy, clip_poly)
-            utils.mosaic_tiles(self.work_path + "*_dem.tif", self.work_path + "mosaic_dem.tif", minx, miny, maxx, maxy,
-                               clip_poly, self.job_id)
+            # self.update_status("mosaicking tiles")
+            # utils.mosaic_tiles(self.work_path + "*_dsm.tif", self.work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy,
+            #                    clip_poly, self.job_id)
+            # utils.mosaic_tiles(self.work_path + "*_height.tif", self.work_path + "mosaic_height.tif", minx, miny, maxx,
+            #                    maxy, clip_poly, self.job_id)
+            # # utils.mosaic_tiles(self.work_path + "*_intensity.tif", self.work_path + "mosaic_intensity.tif", minx, miny, maxx, maxy, clip_poly)
+            # utils.mosaic_tiles(self.work_path + "*_dem.tif", self.work_path + "mosaic_dem.tif", minx, miny, maxx, maxy,
+            #                    clip_poly, self.job_id)
 
             self.update_status("finalizing output")
             tree_file = self.work_path + "mosaic_trees.shp"
             utils.merge_tiles(self.work_path + "*_trees.shp", tree_file, clip_poly)
             utils.finalize(tree_file, clip_poly, self.job_id)
 
-            bldgs_file = self.work_path + "mosaic_bldgs.shp"
-            utils.merge_tiles(self.work_path + "*_bldgs.shp", bldgs_file, clip_poly, 10)
-            utils.finalize(bldgs_file, clip_poly, self.job_id)
+            # bldgs_file = self.work_path + "mosaic_bldgs.shp"
+            # utils.merge_tiles(self.work_path + "*_bldgs.shp", bldgs_file, clip_poly, 10)
+            # utils.finalize(bldgs_file, clip_poly, self.job_id)
 
             # impervious_file = self.work_path + "mosaic_impervious.shp"
             # utils.merge_tiles(self.work_path + "*_impervious.shp", impervious_file, clip_poly, 10)
             # utils.finalize(impervious_file, clip_poly, self.job_id)
 
-            contours_file = self.work_path + "mosaic_contours.shp"
-            utils.contours(self.work_path + "mosaic_dem.tif", contours_file, clip_poly)
-            utils.finalize(contours_file, clip_poly, self.job_id)
+            # contours_file = self.work_path + "mosaic_contours.shp"
+            # utils.contours(self.work_path + "mosaic_dem.tif", contours_file, clip_poly)
+            # utils.finalize(contours_file, clip_poly, self.job_id)
 
             for f_name in gl.glob(self.work_path + "*.txt"):
                 out_file = conf.output_path + str(job_id) + "_" + os.path.basename(f_name)
@@ -181,6 +181,8 @@ if __name__ == "__main__":
         maxy = -99999999
         for f in d["features"]:
             id = f["properties"]["Tile"]
+            # if id != "D14": # Test tile
+            #     continue
             url = "http://gis.amherstma.gov/data/2009/lidar/LAS/AllPts/LAZ/AllPts_{0}.laz".format(id)
             item = {"id": index, "url": url, "path": work_path}
             bbox = [float(x) for x in f["bbox"]]
@@ -195,6 +197,14 @@ if __name__ == "__main__":
             tile_list.append(item)
             index += 1
     process_tiles(tile_list)
+    with open(work_path + "_tiles_attribs.txt", "w") as f:
+        lines = []
+        for t in tile_list:
+            line = "\t".join([str(x) for x in t.values()])
+            lines.append(line + "\n")
+        f.writelines(lines)
+    print ("All Done!")
+    exit()
     utils.mosaic_tiles(work_path + "*_dsm.tif", work_path + "mosaic_dsm.tif", minx, miny, maxx, maxy,
                        None, job_id)
     utils.mosaic_tiles(work_path + "*_height.tif", work_path + "mosaic_height.tif", minx, miny, maxx,

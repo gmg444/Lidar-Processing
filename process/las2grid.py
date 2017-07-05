@@ -100,7 +100,14 @@ def generate_grids(input_file):
     # Output min z
     arr[:, :] = no_data_value
     arr[existing_y, existing_x] = min_z.z.values
-    min_z_arr = arr + 0
+    minz_arr = arr + 0
+    minz_arr[minz_arr <= 0] = -1
+    minz_file = input_file.replace(".las", "_minz_temp.tif")
+    new_file = steps.write_tiff_file(minz_file, minz_arr, x_min, y_min, no_data_value)
+    minz_file = new_file.replace("_minz_temp.tif", "_minz.tif")
+    # -a argument required, with 0,0,0 - see http://gis.stackexchange.com/questions/143818/osgeo4w-and-gdal-gdal2tiles-py-error
+    cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_fillnodata.py" -md 100 -b 1 -of GTiff {0} {1}'.format(new_file, minz_file)
+    utils.exec_command_line(cmd)
 
     # Output range z
     arr[:,:] = no_data_value
@@ -125,7 +132,7 @@ def generate_grids(input_file):
     class_arr = arr + 0
 
     ground_cells = ((class_arr == 2) * (range_z_arr == 0)).astype(np.int32)
-    ground_arr = min_z_arr * ground_cells
+    ground_arr = minz_arr * ground_cells
     ground_arr[ground_arr <= 0] = -1
 
     new_file = steps.write_tiff_file(input_file.replace(".las", "_dem_temp.tif"), ground_arr, x_min, y_min,  no_data_value)
@@ -134,14 +141,18 @@ def generate_grids(input_file):
     cmd = 'C:/Anaconda2/python.exe "C:/Program Files/GDAL/gdal_fillnodata.py" -md 100 -b 1 -of GTiff {0} {1}'.format(new_file, dem_file)
     utils.exec_command_line(cmd)
 
-    range_z_arr = None
-    dem_arr = utils.tif2numpy(dem_file)
+    # range_z_arr = None
+    # dem_arr = utils.tif2numpy(dem_file)
     dsm_arr = utils.tif2numpy(dsm_file)
-    range_z_arr = dsm_arr - dem_arr
+    minz_arr = utils.tif2numpy(minz_file)
+    range_z_arr = dsm_arr - minz_arr
+    # range_z_arr = dsm_arr - dem_arr
     height_tif = input_file.replace(".las", "_height.tif")
     new_file = steps.write_tiff_file(height_tif, range_z_arr, x_min, y_min, no_data_value)
     trees_arr = tft.make_tree_shp(height_tif, height_tif.replace("_height.tif", "_trees.shp"))
-
+    tree_pct = ((trees_arr > 0).sum() / float(trees_arr.shape[0] * trees_arr.shape[1])) * 100.0
+    tree_area = (trees_arr > 0).sum()
+    all_area = float(trees_arr.shape[0] * trees_arr.shape[1])
     # buildings_cells = (class_arr == 1).astype(np.int32)
     # struct = ndi.generate_binary_structure(2, 1)
     # # Expand out buildings cells to catch buildings edges
@@ -162,7 +173,7 @@ def generate_grids(input_file):
     df = None
     class_arr = None
     # range_z_arr = None
-    min_z_arr = None
+    minz_arr = None
     ground_mask = None
     grond_arr = None
 
@@ -189,6 +200,8 @@ def generate_grids(input_file):
     dsm_arr = None
     dem_arr = None
     max_i = None
+
+    return tree_pct, tree_area, all_area
 
 # For debugging - you can display gridded numpy arrays in matplotlib:
 # pip install matplotlib

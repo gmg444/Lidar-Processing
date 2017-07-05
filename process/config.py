@@ -12,5 +12,5 @@ db = {
     "user": "postgres",
     "password": "quagga"
 }
-is_amherst = False
+is_amherst = True
 num_threads = 1

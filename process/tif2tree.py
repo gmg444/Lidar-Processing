@@ -33,7 +33,7 @@ def makeTreeTif(infile):
     #Create a binary array where buildings(>=50) = 1
     buildingsBinary = np.where(myarray>=50, 1, 0).astype(np.bool)
     # Create a binary array were ground(<=) = 1
-    groundBinary = np.where(myarray <= 5, 1, 0).astype(np.bool)
+    groundBinary = np.where(myarray <= 2, 1, 0).astype(np.bool)
 
     myarray = None
     #Dilate buildings binary array
